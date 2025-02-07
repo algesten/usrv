@@ -1,0 +1,14 @@
+[package]
+name = "usrv"
+version = "0.0.0"
+authors = ["Martin Algesten <martin@algesten.se>"]
+description = "Simple, safe HTTP server"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/algesten/usrv"
+readme = "README.md"
+keywords = ["web", "request", "https", "http", "server"]
+categories = ["web-programming::http-server"]
+edition = "2021"
+exclude = ["/cargo_deny.sh", "/deny.toml", "/test.sh"]
+
+[dependencies]

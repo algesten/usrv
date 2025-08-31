@@ -1,6 +1,6 @@
 //! Method-based route registration and router construction.
-//! 
-//! You typically create a router using [`Service::router`] 
+//!
+//! You typically create a router using [`Service::router`]
 //! or [`Service::with_state`].
 use std::marker::PhantomData;
 
@@ -20,7 +20,7 @@ pub use crate::handler::Handler;
 /// # Example
 ///
 /// ```no_run
-/// use usrv::{http, Service};
+/// use usrv::{http, Service, Body};
 ///
 /// fn hello() -> &'static str { "hello" }
 ///
@@ -28,7 +28,7 @@ pub use crate::handler::Handler;
 ///     .get("/hello", hello)
 ///     .build();
 ///
-/// let req = http::Request::builder().uri("/hello").body(usrv::Body).unwrap();
+/// let req = http::Request::builder().uri("/hello").body(Body::empty()).unwrap();
 /// let _resp = router.call((), req);
 /// ```
 pub struct Router<S = ()> {
@@ -98,47 +98,83 @@ impl<S> Router<S> {
     }
 
     /// Register a GET handler.
-    pub fn get<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn get<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::GET, path, handler)
     }
 
     /// Register a POST handler.
-    pub fn post<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn post<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::POST, path, handler)
     }
 
     /// Register a PUT handler.
-    pub fn put<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn put<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PUT, path, handler)
     }
 
     /// Register a DELETE handler.
-    pub fn delete<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn delete<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::DELETE, path, handler)
     }
 
     /// Register a HEAD handler.
-    pub fn head<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn head<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::HEAD, path, handler)
     }
 
     /// Register an OPTIONS handler.
-    pub fn options<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn options<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::OPTIONS, path, handler)
     }
 
     /// Register a CONNECT handler.
-    pub fn connect<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn connect<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::CONNECT, path, handler)
     }
 
     /// Register a PATCH handler.
-    pub fn patch<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn patch<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PATCH, path, handler)
     }
 
     /// Register a TRACE handler.
-    pub fn trace<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn trace<'a, T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::TRACE, path, handler)
     }
 }
@@ -205,47 +241,83 @@ impl<'a, T1, S, H1: Handler<T1, S>, P1: Callable<S>> RouterChain<'a, T1, S, H1, 
     }
 
     /// Register a GET handler.
-    pub fn get<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn get<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::GET, path, handler)
     }
 
     /// Register a POST handler.
-    pub fn post<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn post<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::POST, path, handler)
     }
 
     /// Register a PUT handler.
-    pub fn put<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn put<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PUT, path, handler)
     }
 
     /// Register a DELETE handler.
-    pub fn delete<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn delete<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::DELETE, path, handler)
     }
 
     /// Register a HEAD handler.
-    pub fn head<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn head<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::HEAD, path, handler)
     }
 
     /// Register an OPTIONS handler.
-    pub fn options<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn options<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::OPTIONS, path, handler)
     }
 
     /// Register a CONNECT handler.
-    pub fn connect<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn connect<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::CONNECT, path, handler)
     }
 
     /// Register a PATCH handler.
-    pub fn patch<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn patch<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PATCH, path, handler)
     }
 
     /// Register a TRACE handler.
-    pub fn trace<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
+    pub fn trace<T, H: Handler<T, S>>(
+        self,
+        path: &'a str,
+        handler: H,
+    ) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::TRACE, path, handler)
     }
 }
@@ -315,7 +387,10 @@ mod test {
 
         let mut state = AppState;
 
-        let _respone= router.call(&mut state, Request::builder().uri("/").body(Body).unwrap());
+        let _respone = router.call(
+            &mut state,
+            Request::builder().uri("/").body(Body::empty()).unwrap(),
+        );
 
         is_send(router);
     }

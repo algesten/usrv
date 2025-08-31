@@ -51,7 +51,6 @@ impl Service<(), ()> {
     pub fn with_state<S>() -> Router<S> {
         Router::with_state()
     }
-
 }
 
 impl<S, R: Callable<S>> Service<S, R> {

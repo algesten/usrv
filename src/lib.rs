@@ -9,18 +9,21 @@ extern crate log;
 
 /// Re-export of `http` types used throughout the public API.
 #[doc(inline)]
-pub use ureq_proto::http as http;
+pub use ureq_proto::http;
 
+mod body;
+mod error;
 mod handler;
 mod into_res;
 mod matcher;
 mod send_body;
 mod service;
 mod util;
-mod error;
 
 pub mod extract;
 pub mod router;
+
+pub use body::Body;
 
 pub use error::Error;
 
@@ -43,6 +46,3 @@ pub use send_body::SendBody;
 /// A callable service produced from a router.
 #[doc(inline)]
 pub use service::Service;
-
-/// Placeholder request body type used with `http::Request`.
-pub struct Body;

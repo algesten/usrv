@@ -13,13 +13,13 @@
 //! ```no_run
 //! # #[cfg(feature = "query")]
 //! # {
-//! use usrv::{http, Service};
+//! use usrv::{http, Service, Body};
 //! use usrv::extract::Query;
 //!
 //! #[derive(serde::Deserialize)]
 //! struct Params { foo: String }
 //!
-//! fn handler(p: Query<Params>, _req: http::Request<usrv::Body>) -> String {
+//! fn handler(p: Query<Params>, _req: http::Request<Body>) -> String {
 //!     format!("foo={}", p.0.foo)
 //! }
 //!
@@ -30,21 +30,21 @@
 //! let req = http::Request::builder()
 //!     .method("GET")
 //!     .uri("/hello?foo=bar")
-//!     .body(usrv::Body)
+//!     .body(Body::empty())
 //!     .unwrap();
 //!
 //! let _resp = router.call((), req);
 //! # }
 //! ```
-use std::convert::Infallible;
 use crate::http;
-use http::{request::Parts, Request};
 use crate::into_res::IntoResponse;
 use crate::Body;
 #[cfg(any(feature = "query", feature = "json"))]
 use crate::{http::Response, SendBody};
+use http::{request::Parts, Request};
 #[cfg(any(feature = "query", feature = "json"))]
 use serde::de::DeserializeOwned;
+use std::convert::Infallible;
 
 /// Builds a value from request head/parts.
 ///
@@ -65,9 +65,8 @@ pub trait FromRequestParts<S>: Sized {
     /// # Example
     ///
     /// ```no_run
-    /// use usrv::http;
+    /// use usrv::{http, Service, Body};
     /// use usrv::extract::FromRequestParts;
-    /// use usrv::Service;
     ///
     /// #[derive(Clone)]
     /// struct XId(String);
@@ -80,7 +79,7 @@ pub trait FromRequestParts<S>: Sized {
     ///     }
     /// }
     ///
-    /// fn handler(x: XId, _r: http::Request<usrv::Body>) -> String { x.0 }
+    /// fn handler(x: XId, _r: http::Request<Body>) -> String { x.0 }
     /// let _router = Service::router().get("/", handler).build();
     /// ```
     fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
@@ -106,9 +105,9 @@ pub trait FromRequest<S>: Sized {
     /// # Example
     ///
     /// ```no_run
-    /// use usrv::{http, Service};
+    /// use usrv::{http, Service, Body};
     ///
-    /// fn take(req: http::Request<usrv::Body>) -> String {
+    /// fn take(req: http::Request<Body>) -> String {
     ///     req.uri().to_string()
     /// }
     ///
@@ -253,28 +252,28 @@ fn content_type_is_json(headers: &http::HeaderMap) -> Result<bool, JsonRejection
     match headers.get(http::header::CONTENT_TYPE) {
         None => Ok(true),
         Some(value) => {
-            let Ok(s) = value.to_str() else { return Err(JsonRejection) };
+            let Ok(s) = value.to_str() else {
+                return Err(JsonRejection);
+            };
             let s = s.trim();
             // Split off parameters like "; charset=utf-8"
             let ty = s.split(';').next().unwrap();
             let ty = ty.trim().to_ascii_lowercase();
 
-            if ty == "application/json" { return Ok(true); }
+            if ty == "application/json" {
+                return Ok(true);
+            }
             if let Some(idx) = ty.rfind('+') {
                 if &ty[..idx] != "application/" && !ty.starts_with("application/") {
                     return Err(JsonRejection);
                 }
-                if &ty[idx..] == "+json" { return Ok(true); }
+                if &ty[idx..] == "+json" {
+                    return Ok(true);
+                }
             }
             Err(JsonRejection)
         }
     }
-}
-
-#[cfg(feature = "json")]
-fn take_body_bytes(request: &http::Request<Body>) -> Option<&Vec<u8>> {
-    // By convention body bytes are provided via request extensions for body-based extractors.
-    request.extensions().get::<Vec<u8>>()
 }
 
 #[cfg(feature = "json")]
@@ -284,20 +283,22 @@ where
 {
     type Rejection = JsonRejection;
     fn from_request(_state: &S, request: Request<Body>) -> Result<Self, Self::Rejection> {
-        if !content_type_is_json(request.headers())? { return Err(JsonRejection); }
+        if !content_type_is_json(request.headers())? {
+            return Err(JsonRejection);
+        }
 
-        let bytes = take_body_bytes(&request).ok_or(JsonRejection)?;
-        let value: T = serde_json::from_slice(bytes).map_err(|_| JsonRejection)?;
+        let (_parts, mut body) = request.into_parts();
+        let reader = body.with_config().limit(10 * 1024 * 1024).reader();
+        let value: T = serde_json::from_reader(reader).map_err(|_| JsonRejection)?;
         Ok(Json(value))
     }
 }
 
-
 #[cfg(all(test, feature = "query"))]
 mod tests {
     use super::*;
-    use std::collections::{BTreeMap, HashMap};
     use crate::Service;
+    use std::collections::{BTreeMap, HashMap};
 
     fn read_body_string(mut resp: http::Response<SendBody>) -> String {
         let mut bytes = Vec::new();
@@ -325,7 +326,7 @@ mod tests {
             .method("GET")
             .uri("/req")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -346,7 +347,7 @@ mod tests {
             .method("GET")
             .uri("/m")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -367,7 +368,7 @@ mod tests {
             .method("GET")
             .uri("/u")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -379,7 +380,11 @@ mod tests {
     fn extract_version() {
         fn handler(v: http::Version, _r: http::Request<Body>) -> &'static str {
             // Indicate whether the request used HTTP/1.1
-            if v == http::Version::HTTP_11 { "ok" } else { "bad" }
+            if v == http::Version::HTTP_11 {
+                "ok"
+            } else {
+                "bad"
+            }
         }
 
         let router = Service::router().get("/v", handler).build();
@@ -388,7 +393,7 @@ mod tests {
             .method("GET")
             .uri("/v")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -413,7 +418,7 @@ mod tests {
             .uri("/h")
             .version(http::Version::HTTP_11)
             .header("X-Unit", "ok")
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -425,7 +430,7 @@ mod tests {
     fn extract_query_vec() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
             // Collect and sort pairs to make the output stable for testing
-            let mut parts: Vec<String> = q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect();
+            let mut parts: Vec<String> = q.0.into_iter().map(|(k, v)| format!("{k}={v}")).collect();
             parts.sort();
             parts.join("&")
         }
@@ -436,7 +441,7 @@ mod tests {
             .method("GET")
             .uri("/qv?b=2&a=1")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -457,7 +462,7 @@ mod tests {
             .method("GET")
             .uri("/qh?a=1&b=2")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -469,7 +474,10 @@ mod tests {
     fn extract_query_btreemap() {
         fn handler(q: Query<BTreeMap<String, String>>, _r: http::Request<Body>) -> String {
             // BTreeMap iteration is sorted by key
-            q.0.iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join(",")
+            q.0.iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join(",")
         }
 
         let router = Service::router().get("/qb", handler).build();
@@ -478,7 +486,7 @@ mod tests {
             .method("GET")
             .uri("/qb?b=2&a=1")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -489,7 +497,9 @@ mod tests {
     #[test]
     fn extract_single_named_query_param() {
         #[derive(serde::Deserialize)]
-        struct OnlyFoo { foo: String }
+        struct OnlyFoo {
+            foo: String,
+        }
 
         fn handler(q: Query<OnlyFoo>, _r: http::Request<Body>) -> String {
             q.0.foo
@@ -501,7 +511,7 @@ mod tests {
             .method("GET")
             .uri("/one?foo=bar&ignore=1")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -513,7 +523,10 @@ mod tests {
     fn query_percent_encoded_not_decoded() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
             // Decode %xx encodings into UTF-8
-            q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
+            q.0.into_iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join("&")
         }
 
         let router = Service::router().get("/qp", handler).build();
@@ -522,7 +535,7 @@ mod tests {
             .method("GET")
             .uri("/qp?name=%20123")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -534,7 +547,10 @@ mod tests {
     fn query_plus_not_space() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
             // Query semantics: '+' is treated as space in query strings
-            q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
+            q.0.into_iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join("&")
         }
 
         let router = Service::router().get("/qplus", handler).build();
@@ -543,7 +559,7 @@ mod tests {
             .method("GET")
             .uri("/qplus?abc=a+b")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::empty())
             .unwrap();
 
         let resp = router.call((), req);
@@ -562,31 +578,38 @@ mod json_tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]
-    struct P { a: i32 }
+    struct P {
+        a: i32,
+    }
 
     #[test]
     fn json_ok_with_content_type() {
         #[cfg(feature = "json")]
-        fn handler(_m: http::Method, j: Json<P>) -> String { j.0.a.to_string() }
+        fn handler(_m: http::Method, j: Json<P>) -> String {
+            j.0.a.to_string()
+        }
 
         let router = Service::router().post("/j", handler).build();
 
-        let mut req = http::Request::builder()
+        let req = http::Request::builder()
             .method("POST")
             .uri("/j")
             .version(http::Version::HTTP_11)
-            .header(http::header::CONTENT_TYPE, "application/json; charset=utf-8")
-            .body(Body)
+            .header(
+                http::header::CONTENT_TYPE,
+                "application/json; charset=utf-8",
+            )
+            .body(Body::builder().data(serde_json::to_vec(&P { a: 42 }).unwrap()))
             .unwrap();
-
-        req.extensions_mut().insert(serde_json::to_vec(&P { a: 42 }).unwrap());
 
         let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
@@ -596,18 +619,18 @@ mod json_tests {
     #[test]
     fn json_ok_without_content_type() {
         #[cfg(feature = "json")]
-        fn handler(_m: http::Method, j: Json<P>) -> String { j.0.a.to_string() }
+        fn handler(_m: http::Method, j: Json<P>) -> String {
+            j.0.a.to_string()
+        }
 
         let router = Service::router().post("/j2", handler).build();
 
-        let mut req = http::Request::builder()
+        let req = http::Request::builder()
             .method("POST")
             .uri("/j2")
             .version(http::Version::HTTP_11)
-            .body(Body)
+            .body(Body::builder().data(serde_json::to_vec(&P { a: 7 }).unwrap()))
             .unwrap();
-
-        req.extensions_mut().insert(serde_json::to_vec(&P { a: 7 }).unwrap());
 
         let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
@@ -617,18 +640,19 @@ mod json_tests {
     #[test]
     fn json_reject_wrong_content_type() {
         #[cfg(feature = "json")]
-        fn handler(_m: http::Method, _j: Json<P>) -> &'static str { "ok" }
+        fn handler(_m: http::Method, _j: Json<P>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/j3", handler).build();
 
-        let mut req = http::Request::builder()
+        let req = http::Request::builder()
             .method("POST")
             .uri("/j3")
             .version(http::Version::HTTP_11)
             .header(http::header::CONTENT_TYPE, "text/plain")
-            .body(Body)
+            .body(Body::builder().data(b"{\"a\":1}".to_vec()))
             .unwrap();
-        req.extensions_mut().insert(b"{\"a\":1}".to_vec());
 
         let resp = router.call((), req);
         assert_eq!(resp.status(), 400);
@@ -637,18 +661,19 @@ mod json_tests {
     #[test]
     fn json_reject_invalid_json() {
         #[cfg(feature = "json")]
-        fn handler(_m: http::Method, _j: Json<P>) -> &'static str { "ok" }
+        fn handler(_m: http::Method, _j: Json<P>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/j4", handler).build();
 
-        let mut req = http::Request::builder()
+        let req = http::Request::builder()
             .method("POST")
             .uri("/j4")
             .version(http::Version::HTTP_11)
             .header(http::header::CONTENT_TYPE, "application/json")
-            .body(Body)
+            .body(Body::builder().data(b"not-json".to_vec()))
             .unwrap();
-        req.extensions_mut().insert(b"not-json".to_vec());
 
         let resp = router.call((), req);
         assert_eq!(resp.status(), 400);

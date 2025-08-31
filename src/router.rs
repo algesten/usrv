@@ -222,7 +222,9 @@ mod test {
             .get("free", |_r: Request<Body>| {})
             .build();
 
-        let _state = AppState;
+        let mut state = AppState;
+
+        let _respone= router.call(&mut state, Request::builder().uri("/").body(Body).unwrap());
 
         is_send(router);
     }

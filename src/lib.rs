@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
+#![allow(mismatched_lifetime_syntaxes)]
 // #![deny(missing_docs)]
 
 #[macro_use]

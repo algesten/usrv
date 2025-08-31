@@ -1,55 +1,53 @@
 use std::convert::Infallible;
-// std collections used only in tests; see cfg(test) module below
-
-use crate::http::{Request, Response};
+use crate::http;
+use http::{request::Parts, Request, Response};
 use crate::into_res::IntoResponse;
 use crate::{Body, SendBody};
 use serde::de::DeserializeOwned;
 
-pub trait Arg<S>: Sized {
+pub trait FromRequestParts<S>: Sized {
+    type Rejection: IntoResponse;
+    fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
+}
+
+pub trait FromRequest<S>: Sized {
     type Rejection: IntoResponse;
     fn from_request(state: &S, request: Request<Body>) -> Result<Self, Self::Rejection>;
 }
 
-impl<S> Arg<S> for Request<Body> {
+impl<S> FromRequest<S> for Request<Body> {
     type Rejection = Infallible;
-
     fn from_request(_state: &S, request: Request<Body>) -> Result<Self, Self::Rejection> {
         Ok(request)
     }
 }
 
-pub trait RefArg<S>: Sized {
-    type Rejection: IntoResponse;
-    fn from_request(state: &S, request: &Request<Body>) -> Result<Self, Self::Rejection>;
-}
-
-// Core non-consuming extractors mirroring axum-like parts
-impl<S> RefArg<S> for crate::http::Method {
+// Core non-consuming extractors over request head/parts
+impl<S> FromRequestParts<S> for http::Method {
     type Rejection = Infallible;
-    fn from_request(_state: &S, request: &Request<Body>) -> Result<Self, Self::Rejection> {
-        Ok(request.method().clone())
+    fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.method.clone())
     }
 }
 
-impl<S> RefArg<S> for crate::http::Uri {
+impl<S> FromRequestParts<S> for http::Uri {
     type Rejection = Infallible;
-    fn from_request(_state: &S, request: &Request<Body>) -> Result<Self, Self::Rejection> {
-        Ok(request.uri().clone())
+    fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.uri.clone())
     }
 }
 
-impl<S> RefArg<S> for crate::http::Version {
+impl<S> FromRequestParts<S> for http::Version {
     type Rejection = Infallible;
-    fn from_request(_state: &S, request: &Request<Body>) -> Result<Self, Self::Rejection> {
-        Ok(request.version())
+    fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.version)
     }
 }
 
-impl<S> RefArg<S> for crate::http::HeaderMap {
+impl<S> FromRequestParts<S> for http::HeaderMap {
     type Rejection = Infallible;
-    fn from_request(_state: &S, request: &Request<Body>) -> Result<Self, Self::Rejection> {
-        Ok(request.headers().clone())
+    fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.headers.clone())
     }
 }
 
@@ -81,15 +79,15 @@ where
     }
 }
 
-impl<S, T: FromQuery> RefArg<S> for Query<T> {
+impl<S, T: FromQuery> FromRequestParts<S> for Query<T> {
     type Rejection = QueryRejection;
-    fn from_request(_state: &S, request: &Request<Body>) -> Result<Self, Self::Rejection> {
-        let value = T::from_query(request.uri().query())?;
+    fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let value = T::from_query(parts.uri.query())?;
         Ok(Query(value))
     }
 }
 
-impl<S, T: FromQuery> Arg<S> for Query<T> {
+impl<S, T: FromQuery> FromRequest<S> for Query<T> {
     type Rejection = QueryRejection;
     fn from_request(_state: &S, request: Request<Body>) -> Result<Self, Self::Rejection> {
         let value = T::from_query(request.uri().query())?;
@@ -100,7 +98,6 @@ impl<S, T: FromQuery> Arg<S> for Query<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::http as http;
     use crate::{MethodRouter, Router};
     use std::collections::{BTreeMap, HashMap};
 
@@ -315,7 +312,7 @@ mod tests {
     #[test]
     fn query_plus_not_space() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
-            // Axum semantics: '+' is treated as space in query strings
+            // Query semantics: '+' is treated as space in query strings
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 

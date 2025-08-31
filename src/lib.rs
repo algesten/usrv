@@ -8,7 +8,7 @@ extern crate log;
 
 pub use ureq_proto::http;
 
-mod arg;
+mod from_req;
 mod handler;
 mod into_res;
 mod matcher;
@@ -17,13 +17,13 @@ mod send_body;
 mod service;
 mod util;
 
-pub use arg::{Arg, RefArg};
+pub use from_req::{FromRequest, FromRequestParts};
 pub use handler::Handler;
 pub use into_res::{IntoResponse, NotFound};
 pub use router::{MethodHandler, MethodRouter, Router};
 pub use send_body::{IntoSendBody, SendBody};
 pub use service::Service;
 
-pub use arg::Query;
+pub use from_req::Query;
 
 pub struct Body;

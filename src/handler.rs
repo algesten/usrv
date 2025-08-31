@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::arg::{Arg, RefArg};
+use crate::from_req::{FromRequest, FromRequestParts};
 use crate::http::{Request, Response};
 use crate::into_res::IntoResponse;
 use crate::{Body, SendBody};
@@ -44,7 +44,7 @@ where
 impl<S, F, T1, Ret> Handler<(((),), U<T1>), S> for F
 where
     F: FnOnce(S, T1) -> Ret + Clone,
-    T1: Arg<S>,
+    T1: FromRequest<S>,
     Ret: IntoResponse,
 {
     fn call(self, state: S, request: Request<Body>) -> Response<SendBody> {
@@ -65,18 +65,20 @@ macro_rules! impl_handler {
         where
             F: FnOnce($($ty,)* $last) -> Ret + Clone ,
             Ret: IntoResponse,
-            $( $ty: RefArg<S> + Send, )*
-            $last: Arg<S> + Send,
+            $( $ty: FromRequestParts<S> + Send, )*
+            $last: FromRequest<S> + Send,
         {
             fn call(self, state: S, request: Request<Body>) -> Response<SendBody> {
+                let (mut parts, body) = request.into_parts();
 
                 $(
-                    let $ty = match <$ty>::from_request(&state, &request) {
+                    let $ty = match <$ty>::from_request_parts(&mut parts, &state) {
                         Ok(v) => v,
                         Err(e) => return e.into_response(),
                     };
                 )*
 
+                let request = Request::from_parts(parts, body);
                 let $last = match $last::from_request(&state, request) {
                     Ok(v) => v,
                     Err(e) => return e.into_response(),
@@ -90,18 +92,20 @@ macro_rules! impl_handler {
         where
             F: FnOnce(S, $($ty,)* $last) -> Ret + Clone ,
             Ret: IntoResponse,
-            $( $ty: RefArg<S> + Send, )*
-            $last: Arg<S> + Send,
+            $( $ty: FromRequestParts<S> + Send, )*
+            $last: FromRequest<S> + Send,
         {
             fn call(self, state: S, request: Request<Body>) -> Response<SendBody> {
+                let (mut parts, body) = request.into_parts();
 
                 $(
-                    let $ty = match <$ty>::from_request(&state, &request) {
+                    let $ty = match <$ty>::from_request_parts(&mut parts, &state) {
                         Ok(v) => v,
                         Err(e) => return e.into_response(),
                     };
                 )*
 
+                let request = Request::from_parts(parts, body);
                 let $last = match $last::from_request(&state, request) {
                     Ok(v) => v,
                     Err(e) => return e.into_response(),

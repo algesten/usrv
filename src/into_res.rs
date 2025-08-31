@@ -6,11 +6,11 @@
 //! # Example
 //!
 //! ```no_run
-//! use usrv::Router;
+//! use usrv::Service;
 //!
 //! fn hello() -> &'static str { "hello" }
 //!
-//! let _router = Router::new().get("/hello", hello).build();
+//! let _router = Service::router().get("/hello", hello).build();
 //! ```
 use std::convert::Infallible;
 
@@ -27,10 +27,10 @@ pub trait IntoResponse {
     /// # Example
     ///
     /// ```no_run
-    /// use usrv::Router;
+    /// use usrv::Service;
     ///
     /// fn hello() -> &'static str { "hello" }
-    /// let _router = Router::new().get("/hello", hello).build();
+    /// let _router = Service::router().get("/hello", hello).build();
     /// ```
     fn into_response(self) -> Response<SendBody>;
 }

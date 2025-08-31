@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::from_req::{FromRequest, FromRequestParts};
+use crate::extract::{FromRequest, FromRequestParts};
 use crate::http::{Request, Response};
 use crate::into_res::IntoResponse;
 use crate::{Body, SendBody};

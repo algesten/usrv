@@ -1,9 +1,16 @@
+//! Method-based route registration and router construction.
+//! 
+//! You typically create a router using [`Service::router`] 
+//! or [`Service::with_state`].
 use std::marker::PhantomData;
 
-use crate::handler::Handler;
 use crate::http::{Method, Request, Response};
 use crate::matcher::request_matcher;
 use crate::{Body, SendBody, Service};
+
+/// A function/closure that can handle a request.
+#[doc(inline)]
+pub use crate::handler::Handler;
 
 /// A builder for registering routes and creating a callable router.
 ///
@@ -13,11 +20,11 @@ use crate::{Body, SendBody, Service};
 /// # Example
 ///
 /// ```no_run
-/// use usrv::{http, Router};
+/// use usrv::{http, Service};
 ///
 /// fn hello() -> &'static str { "hello" }
 ///
-/// let router = Router::new()
+/// let router = Service::router()
 ///     .get("/hello", hello)
 ///     .build();
 ///
@@ -29,41 +36,11 @@ pub struct Router<S = ()> {
 }
 
 impl Router {
-    /// Create a new empty router without application state.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use usrv::Router;
-    ///
-    /// fn hello() -> &'static str { "hello" }
-    ///
-    /// let _router = Router::new().get("/hello", hello).build();
-    /// ```
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::with_state::<()>()
     }
 
-    /// Create a new empty router parameterized by application state `S`.
-    ///
-    /// The state is passed by value to handlers that declare it as the first
-    /// parameter. A common pattern is to use a mutable reference to a shared
-    /// state type, e.g. `&mut AppState`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use usrv::Router;
-    ///
-    /// struct App;
-    ///
-    /// fn handler(_app: &mut App) { /* ... */ }
-    ///
-    /// let _router = Router::with_state::<&mut App>()
-    ///     .get("/", handler)
-    ///     .build();
-    /// ```
-    pub fn with_state<S>() -> Router<S> {
+    pub(crate) fn with_state<S>() -> Router<S> {
         Router {
             _state: PhantomData,
         }
@@ -76,14 +53,17 @@ impl Default for Router {
     }
 }
 
-#[doc(hidden)]
+/// A trait for callable router chains.
 pub trait Callable<S>: Clone {
+    /// Call the router chain with the given state and request.
     fn call(&self, state: S, request: Request<Body>) -> CallResult<S>;
 }
 
-#[doc(hidden)]
+/// The result of calling a callable router chain.
 pub enum CallResult<S> {
+    /// The request was handled by the router chain.
     Handled(Response<SendBody>),
+    /// The request was not handled by the router chain.
     Unhandled(S, Request<Body>),
 }
 
@@ -96,7 +76,7 @@ impl<S> Callable<S> for Router<S> {
 /// Provides method-based route registration and router construction.
 impl<S> Router<S> {
     /// Finalize the route definitions and create a callable router.
-    pub fn build(self) -> Service<S, Self> where Self: Callable<S> {
+    pub fn build(self) -> Service<S, Self> {
         Service::new(self)
     }
 
@@ -203,7 +183,7 @@ impl<'a, T, S, H: Handler<T, S>, P: Callable<S>> Callable<S> for RouterChain<'a,
 
 impl<'a, T1, S, H1: Handler<T1, S>, P1: Callable<S>> RouterChain<'a, T1, S, H1, P1> {
     /// Finalize the route definitions and create a callable router.
-    pub fn build(self) -> Service<S, Self> where Self: Callable<S> {
+    pub fn build(self) -> Service<S, Self> {
         Service::new(self)
     }
 

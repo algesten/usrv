@@ -11,8 +11,10 @@
 //! # Example
 //!
 //! ```no_run
-//! use usrv::{http, Router};
-//! use usrv::Query;
+//! # #[cfg(feature = "query")]
+//! # {
+//! use usrv::{http, Service};
+//! use usrv::extract::Query;
 //!
 //! #[derive(serde::Deserialize)]
 //! struct Params { foo: String }
@@ -21,7 +23,7 @@
 //!     format!("foo={}", p.0.foo)
 //! }
 //!
-//! let router = Router::new()
+//! let router = Service::router()
 //!     .get("/hello", handler)
 //!     .build();
 //!
@@ -32,12 +34,16 @@
 //!     .unwrap();
 //!
 //! let _resp = router.call((), req);
+//! # }
 //! ```
 use std::convert::Infallible;
 use crate::http;
-use http::{request::Parts, Request, Response};
+use http::{request::Parts, Request};
 use crate::into_res::IntoResponse;
-use crate::{Body, SendBody};
+use crate::Body;
+#[cfg(feature = "query")]
+use crate::{http::Response, SendBody};
+#[cfg(feature = "query")]
 use serde::de::DeserializeOwned;
 
 /// Builds a value from request head/parts.
@@ -60,7 +66,8 @@ pub trait FromRequestParts<S>: Sized {
     ///
     /// ```no_run
     /// use usrv::http;
-    /// use usrv::{FromRequestParts, Router};
+    /// use usrv::extract::FromRequestParts;
+    /// use usrv::Service;
     ///
     /// #[derive(Clone)]
     /// struct XId(String);
@@ -74,7 +81,7 @@ pub trait FromRequestParts<S>: Sized {
     /// }
     ///
     /// fn handler(x: XId, _r: http::Request<usrv::Body>) -> String { x.0 }
-    /// let _router = Router::new().get("/", handler).build();
+    /// let _router = Service::router().get("/", handler).build();
     /// ```
     fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
 }
@@ -99,13 +106,13 @@ pub trait FromRequest<S>: Sized {
     /// # Example
     ///
     /// ```no_run
-    /// use usrv::{http, Router};
+    /// use usrv::{http, Service};
     ///
     /// fn take(req: http::Request<usrv::Body>) -> String {
     ///     req.uri().to_string()
     /// }
     ///
-    /// let _router = Router::new().get("/path", take).build();
+    /// let _router = Service::router().get("/path", take).build();
     /// ```
     fn from_request(state: &S, request: Request<Body>) -> Result<Self, Self::Rejection>;
 }
@@ -154,30 +161,16 @@ impl<S> FromRequestParts<S> for http::HeaderMap {
 /// Parses the URI query string using `application/x-www-form-urlencoded`
 /// semantics (percent-decodes and treats `+` as space) and deserializes into
 /// `T` via `serde_urlencoded`.
-///
-/// # Examples
-///
-/// Extract into a single field struct:
-///
-/// ```no_run
-/// use usrv::{http, Router, Query};
-///
-/// #[derive(serde::Deserialize)]
-/// struct Params { foo: String }
-///
-/// fn handler(p: Query<Params>, _req: http::Request<usrv::Body>) -> String {
-///     p.0.foo
-/// }
-///
-/// let router = Router::new().get("/", handler).build();
-/// ```
+#[cfg(feature = "query")]
 pub struct Query<T>(pub T);
 
 /// Error returned when query string deserialization fails.
 ///
 /// Returned as a `400 Bad Request`.
+#[cfg(feature = "query")]
 pub struct QueryRejection;
 
+#[cfg(feature = "query")]
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response<SendBody> {
         Response::builder()
@@ -189,6 +182,7 @@ impl IntoResponse for QueryRejection {
 }
 
 /// Internal helper to construct `Query<T>` from a query string.
+#[cfg(feature = "query")]
 pub trait FromQuery: Sized {
     /// Parse an optional raw query string into `Self`.
     ///
@@ -197,6 +191,7 @@ pub trait FromQuery: Sized {
     fn from_query(query: Option<&str>) -> Result<Self, QueryRejection>;
 }
 
+#[cfg(feature = "query")]
 impl<T> FromQuery for T
 where
     T: DeserializeOwned,
@@ -206,6 +201,7 @@ where
     }
 }
 
+#[cfg(feature = "query")]
 impl<S, T: FromQuery> FromRequestParts<S> for Query<T> {
     type Rejection = QueryRejection;
     fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
@@ -214,6 +210,7 @@ impl<S, T: FromQuery> FromRequestParts<S> for Query<T> {
     }
 }
 
+#[cfg(feature = "query")]
 impl<S, T: FromQuery> FromRequest<S> for Query<T> {
     type Rejection = QueryRejection;
     fn from_request(_state: &S, request: Request<Body>) -> Result<Self, Self::Rejection> {
@@ -222,11 +219,11 @@ impl<S, T: FromQuery> FromRequest<S> for Query<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "query"))]
 mod tests {
     use super::*;
-    use crate::Router;
     use std::collections::{BTreeMap, HashMap};
+    use crate::Service;
 
     fn read_body_string(mut resp: http::Response<SendBody>) -> String {
         let mut bytes = Vec::new();
@@ -248,7 +245,7 @@ mod tests {
             "ok"
         }
 
-        let router = Router::new().get("/req", handler).build();
+        let router = Service::router().get("/req", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -269,7 +266,7 @@ mod tests {
             m.to_string()
         }
 
-        let router = Router::new().get("/m", handler).build();
+        let router = Service::router().get("/m", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -290,7 +287,7 @@ mod tests {
             u.to_string()
         }
 
-        let router = Router::new().get("/u", handler).build();
+        let router = Service::router().get("/u", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -311,7 +308,7 @@ mod tests {
             if v == http::Version::HTTP_11 { "ok" } else { "bad" }
         }
 
-        let router = Router::new().get("/v", handler).build();
+        let router = Service::router().get("/v", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -335,7 +332,7 @@ mod tests {
                 .to_string()
         }
 
-        let router = Router::new().get("/h", handler).build();
+        let router = Service::router().get("/h", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -359,7 +356,7 @@ mod tests {
             parts.join("&")
         }
 
-        let router = Router::new().get("/qv", handler).build();
+        let router = Service::router().get("/qv", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -380,7 +377,7 @@ mod tests {
             q.0.get("a").unwrap().to_string() + q.0.get("b").unwrap()
         }
 
-        let router = Router::new().get("/qh", handler).build();
+        let router = Service::router().get("/qh", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -401,7 +398,7 @@ mod tests {
             q.0.iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join(",")
         }
 
-        let router = Router::new().get("/qb", handler).build();
+        let router = Service::router().get("/qb", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -424,7 +421,7 @@ mod tests {
             q.0.foo
         }
 
-        let router = Router::new().get("/one", handler).build();
+        let router = Service::router().get("/one", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -445,7 +442,7 @@ mod tests {
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 
-        let router = Router::new().get("/qp", handler).build();
+        let router = Service::router().get("/qp", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -466,7 +463,7 @@ mod tests {
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 
-        let router = Router::new().get("/qplus", handler).build();
+        let router = Service::router().get("/qplus", handler).build();
 
         let req = http::Request::builder()
             .method("GET")

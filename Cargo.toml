@@ -12,15 +12,16 @@ edition = "2021"
 exclude = ["/cargo_deny.sh", "/deny.toml", "/test.sh"]
 
 [features]
-default = []
+default = ["query", "json"]
 json = ["dep:serde_json"]
+query = ["dep:serde_urlencoded"]
 
 [dependencies]
 # ureq-proto = { version = "0.4.0", default-features = false, features = ["server"] }
 ureq-proto = { path = "../ureq-proto", default-features = false, features = ["server"] }
 log = "*"
 percent-encoding = "2.3.1"
-serde_urlencoded = { version = "0.7.1", default-features = false }
+serde_urlencoded = { version = "0.7.1", optional = true, default-features = false }
 
 serde = { version = "1", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "1", optional = true, default-features = false, features = ["std"] }

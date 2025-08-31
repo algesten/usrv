@@ -218,8 +218,6 @@ impl<S, T: FromQuery> FromRequest<S> for Query<T> {
     }
 }
 
-// === JSON extractor ===
-
 /// JSON body extractor.
 ///
 /// Deserializes the request body as JSON into `T` using `serde_json`.
@@ -228,7 +226,7 @@ impl<S, T: FromQuery> FromRequest<S> for Query<T> {
 /// when present and accepts media types of `application/json` and
 /// `application/*+json`.
 #[cfg(feature = "json")]
-pub struct Json<T>(pub T);
+pub struct Json<T, const MAX: u64 = 10_485_760>(pub T);
 
 /// Error returned when JSON deserialization fails or the content type is invalid.
 ///
@@ -277,7 +275,7 @@ fn content_type_is_json(headers: &http::HeaderMap) -> Result<bool, JsonRejection
 }
 
 #[cfg(feature = "json")]
-impl<S, T> FromRequest<S> for Json<T>
+impl<S, T, const MAX: u64> FromRequest<S> for Json<T, MAX>
 where
     T: DeserializeOwned,
 {
@@ -288,7 +286,7 @@ where
         }
 
         let (_parts, mut body) = request.into_parts();
-        let reader = body.with_config().limit(10 * 1024 * 1024).reader();
+        let reader = body.with_config().limit(MAX).reader();
         let value: T = serde_json::from_reader(reader).map_err(|_| JsonRejection)?;
         Ok(Json(value))
     }
@@ -673,6 +671,29 @@ mod json_tests {
             .version(http::Version::HTTP_11)
             .header(http::header::CONTENT_TYPE, "application/json")
             .body(Body::builder().data(b"not-json".to_vec()))
+            .unwrap();
+
+        let resp = router.call((), req);
+        assert_eq!(resp.status(), 400);
+    }
+
+    #[test]
+    fn json_limit_10kb_reject_large() {
+        #[derive(serde::Deserialize, serde::Serialize)]
+        struct Big { s: String }
+
+        #[cfg(feature = "json")]
+        fn handler(_m: http::Method, _j: Json<Big, { 10 * 1024 }>) -> &'static str { "ok" }
+
+        let router = Service::router().post("/jl", handler).build();
+
+        let big = Big { s: "a".repeat(12 * 1024) };
+        let req = http::Request::builder()
+            .method("POST")
+            .uri("/jl")
+            .version(http::Version::HTTP_11)
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .body(Body::builder().data(serde_json::to_vec(&big).unwrap()))
             .unwrap();
 
         let resp = router.call((), req);

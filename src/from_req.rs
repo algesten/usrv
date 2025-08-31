@@ -1,3 +1,38 @@
+//! Extractors for building handlers.
+//!
+//! This module provides two extractor traits:
+//!
+//! - [`FromRequestParts`] for head-only data (method, uri, headers, query, etc.).
+//! - [`FromRequest`] for extractors that consume the full [`http::Request`].
+//!
+//! Extractors are used as handler function parameters. Leading parameters are
+//! built from request parts, and the last parameter may consume the request.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use usrv::{http, Router, MethodRouter};
+//! use usrv::Query;
+//!
+//! #[derive(serde::Deserialize)]
+//! struct Params { foo: String }
+//!
+//! fn handler(p: Query<Params>, _req: http::Request<usrv::Body>) -> String {
+//!     format!("foo={}", p.0.foo)
+//! }
+//!
+//! let svc = Router::new()
+//!     .get("/hello", handler)
+//!     .build();
+//!
+//! let req = http::Request::builder()
+//!     .method("GET")
+//!     .uri("/hello?foo=bar")
+//!     .body(usrv::Body)
+//!     .unwrap();
+//!
+//! let _resp = svc.call((), req);
+//! ```
 use std::convert::Infallible;
 use crate::http;
 use http::{request::Parts, Request, Response};
@@ -5,13 +40,75 @@ use crate::into_res::IntoResponse;
 use crate::{Body, SendBody};
 use serde::de::DeserializeOwned;
 
+/// Builds a value from request head/parts.
+///
+/// Implementors can extract method, uri, headers, query parameters, and other
+/// metadata that resides in the request head. The body is not accessible here.
+///
+/// This trait is synchronous and does not consume the request.
+///
+/// See the crate-level example for typical usage.
 pub trait FromRequestParts<S>: Sized {
+    /// Error type produced when extraction fails.
+    ///
+    /// This is converted into a response via [`IntoResponse`].
     type Rejection: IntoResponse;
+
+    /// Build `Self` from request head/parts and application state.
+    ///
+    /// This does not have access to the request body.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use usrv::http;
+    /// use usrv::{FromRequestParts, MethodRouter, Router};
+    ///
+    /// #[derive(Clone)]
+    /// struct XId(String);
+    ///
+    /// impl<S> FromRequestParts<S> for XId {
+    ///     type Rejection = usrv::NotFound;
+    ///     fn from_request_parts(parts: &mut http::request::Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    ///         let v = parts.headers.get("x-id").and_then(|h| h.to_str().ok()).ok_or(usrv::NotFound)?;
+    ///         Ok(XId(v.to_string()))
+    ///     }
+    /// }
+    ///
+    /// fn handler(x: XId, _r: http::Request<usrv::Body>) -> String { x.0 }
+    /// let _svc = Router::new().get("/", handler).build();
+    /// ```
     fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
 }
 
+/// Builds a value by consuming the full request.
+///
+/// Implementors may read the request body. This is used for body-based
+/// extractors and for taking ownership of the request.
+///
+/// See the crate-level example for typical usage.
 pub trait FromRequest<S>: Sized {
+    /// Error type produced when extraction fails.
+    ///
+    /// This is converted into a response via [`IntoResponse`].
     type Rejection: IntoResponse;
+
+    /// Build `Self` by consuming the full request.
+    ///
+    /// This is typically used for body-based extractors or to take ownership of
+    /// the request as the last handler parameter.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use usrv::{http, MethodRouter, Router};
+    ///
+    /// fn take(req: http::Request<usrv::Body>) -> String {
+    ///     req.uri().to_string()
+    /// }
+    ///
+    /// let _svc = Router::new().get("/path", take).build();
+    /// ```
     fn from_request(state: &S, request: Request<Body>) -> Result<Self, Self::Rejection>;
 }
 
@@ -22,7 +119,7 @@ impl<S> FromRequest<S> for Request<Body> {
     }
 }
 
-// Core non-consuming extractors over request head/parts
+/// Extract the HTTP method from request parts.
 impl<S> FromRequestParts<S> for http::Method {
     type Rejection = Infallible;
     fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
@@ -30,6 +127,7 @@ impl<S> FromRequestParts<S> for http::Method {
     }
 }
 
+/// Extract the request URI from request parts.
 impl<S> FromRequestParts<S> for http::Uri {
     type Rejection = Infallible;
     fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
@@ -37,6 +135,7 @@ impl<S> FromRequestParts<S> for http::Uri {
     }
 }
 
+/// Extract the HTTP version from request parts.
 impl<S> FromRequestParts<S> for http::Version {
     type Rejection = Infallible;
     fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
@@ -44,6 +143,7 @@ impl<S> FromRequestParts<S> for http::Version {
     }
 }
 
+/// Extract a clone of the header map from request parts.
 impl<S> FromRequestParts<S> for http::HeaderMap {
     type Rejection = Infallible;
     fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
@@ -51,9 +151,33 @@ impl<S> FromRequestParts<S> for http::HeaderMap {
     }
 }
 
-// Query extractor
+/// Query string extractor.
+///
+/// Parses the URI query string using `application/x-www-form-urlencoded`
+/// semantics (percent-decodes and treats `+` as space) and deserializes into
+/// `T` via `serde_urlencoded`.
+///
+/// # Examples
+///
+/// Extract into a single field struct:
+///
+/// ```no_run
+/// use usrv::{http, Router, MethodRouter, Query};
+///
+/// #[derive(serde::Deserialize)]
+/// struct Params { foo: String }
+///
+/// fn handler(p: Query<Params>, _req: http::Request<usrv::Body>) -> String {
+///     p.0.foo
+/// }
+///
+/// let svc = Router::new().get("/", handler).build();
+/// ```
 pub struct Query<T>(pub T);
 
+/// Error returned when query string deserialization fails.
+///
+/// Returned as a `400 Bad Request`.
 pub struct QueryRejection;
 
 impl IntoResponse for QueryRejection {
@@ -66,7 +190,12 @@ impl IntoResponse for QueryRejection {
     }
 }
 
+/// Internal helper to construct `Query<T>` from a query string.
 pub trait FromQuery: Sized {
+    /// Parse an optional raw query string into `Self`.
+    ///
+    /// Uses `application/x-www-form-urlencoded` semantics (percent-decodes and
+    /// treats `+` as space) and deserializes with `serde_urlencoded`.
     fn from_query(query: Option<&str>) -> Result<Self, QueryRejection>;
 }
 

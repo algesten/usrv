@@ -5,9 +5,15 @@ use crate::http::{Request, Response};
 use crate::into_res::IntoResponse;
 use crate::{Body, SendBody};
 
+/// Internal helper to encode handler argument lists.
 pub struct U<T>(PhantomData<T>);
 
+/// A function or closure that can handle a request.
+///
+/// The generic `T` encodes the handler argument list. The last argument may
+/// consume the request; preceding arguments are built from request parts.
 pub trait Handler<T, S>: Clone {
+    /// Invoke the handler with the given state and request.
     fn call(self, state: S, request: Request<Body>) -> Response<SendBody>;
 }
 

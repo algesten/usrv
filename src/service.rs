@@ -4,6 +4,10 @@ use crate::http::{Request, Response};
 use crate::router::{CallResult, Callable};
 use crate::{Body, IntoResponse, NotFound, SendBody};
 
+/// A callable router service.
+///
+/// Build using [`MethodRouter::build`](crate::MethodRouter::build) and call with a state and
+/// request to produce a response.
 pub struct Service<S, R> {
     _state: PhantomData<S>,
     router: R,
@@ -17,6 +21,7 @@ impl<S, R: Callable<S>> Service<S, R> {
         }
     }
 
+    /// Call the service with the given state and request.
     pub fn call(&self, state: S, request: Request<Body>) -> Response<SendBody> {
         match self.router.call(state, request) {
             CallResult::Handled(v) => v,

@@ -5,15 +5,64 @@ use crate::http::{Method, Request, Response};
 use crate::matcher::request_matcher;
 use crate::{Body, SendBody, Service};
 
+/// A builder for registering routes and creating a service.
+///
+/// Routes are registered per-method using convenience functions like
+/// [`get`](MethodRouter::get) and [`post`](MethodRouter::post).
+///
+/// # Example
+///
+/// ```no_run
+/// use usrv::{http, Router, MethodRouter};
+///
+/// fn hello() -> &'static str { "hello" }
+///
+/// let svc = Router::new()
+///     .get("/hello", hello)
+///     .build();
+///
+/// let req = http::Request::builder().uri("/hello").body(usrv::Body).unwrap();
+/// let _resp = svc.call((), req);
+/// ```
 pub struct Router<S = ()> {
     _state: PhantomData<S>,
 }
 
 impl Router {
+    /// Create a new empty router without application state.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use usrv::{Router, MethodRouter};
+    ///
+    /// fn hello() -> &'static str { "hello" }
+    ///
+    /// let _svc = Router::new().get("/hello", hello).build();
+    /// ```
     pub fn new() -> Self {
         Self::with_state::<()>()
     }
 
+    /// Create a new empty router parameterized by application state `S`.
+    ///
+    /// The state is passed by value to handlers that declare it as the first
+    /// parameter. A common pattern is to use a mutable reference to a shared
+    /// state type, e.g. `&mut AppState`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use usrv::{Router, MethodRouter};
+    ///
+    /// struct App;
+    ///
+    /// fn handler(_app: &mut App) { /* ... */ }
+    ///
+    /// let _svc = Router::with_state::<&mut App>()
+    ///     .get("/", handler)
+    ///     .build();
+    /// ```
     pub fn with_state<S>() -> Router<S> {
         Router {
             _state: PhantomData,
@@ -44,11 +93,14 @@ impl<S> Callable<S> for Router<S> {
     }
 }
 
+/// Provides method-based route registration and service construction.
 pub trait MethodRouter<S>: Sized + Callable<S> {
+    /// Finalize the route definitions and create a service.
     fn build(self) -> Service<S, Self> {
         Service::new(self)
     }
 
+    /// Register a handler for a specific HTTP method and path.
     fn handle<T, H: Handler<T, S>>(
         self,
         method: Method,
@@ -56,38 +108,71 @@ pub trait MethodRouter<S>: Sized + Callable<S> {
         handler: H,
     ) -> MethodHandler<T, S, H, Self>;
 
+    /// Register a GET handler.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use usrv::{Router, MethodRouter};
+    ///
+    /// fn hello() -> &'static str { "hello" }
+    ///
+    /// let _svc = Router::new()
+    ///     .get("/hello", hello)
+    ///     .build();
+    /// ```
     fn get<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::GET, path, handler)
     }
 
+    /// Register a POST handler.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use usrv::{http, Router, MethodRouter};
+    ///
+    /// fn echo(_req: http::Request<usrv::Body>) -> &'static str { "ok" }
+    ///
+    /// let _svc = Router::new()
+    ///     .post("/echo", echo)
+    ///     .build();
+    /// ```
     fn post<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::POST, path, handler)
     }
 
+    /// Register a PUT handler.
     fn put<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::PUT, path, handler)
     }
 
+    /// Register a DELETE handler.
     fn delete<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::DELETE, path, handler)
     }
 
+    /// Register a HEAD handler.
     fn head<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::HEAD, path, handler)
     }
 
+    /// Register an OPTIONS handler.
     fn options<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::OPTIONS, path, handler)
     }
 
+    /// Register a CONNECT handler.
     fn connect<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::CONNECT, path, handler)
     }
 
+    /// Register a PATCH handler.
     fn patch<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::PATCH, path, handler)
     }
 
+    /// Register a TRACE handler.
     fn trace<T, H: Handler<T, S>>(self, path: &str, handler: H) -> MethodHandler<T, S, H, Self> {
         Self::handle(self, Method::TRACE, path, handler)
     }
@@ -111,6 +196,11 @@ impl<S> MethodRouter<S> for Router<S> {
     }
 }
 
+/// A chained route definition.
+///
+/// Returned by the method-specific registration functions and itself implements
+/// [`MethodRouter`], so you can keep chaining registrations before calling
+/// [`MethodRouter::build`].
 pub struct MethodHandler<'a, T, S, H, P> {
     _htype: PhantomData<T>,
     _state: PhantomData<S>,

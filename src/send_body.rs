@@ -10,6 +10,7 @@ use crate::util::private::Private;
 // MSRV 1.78
 // impl_into_body!(&Stdin, Reader);
 
+/// A streaming HTTP response body.
 pub struct SendBody {
     inner: BodyInner,
     ended: bool,
@@ -21,7 +22,7 @@ impl SendBody {
         BodyInner::None.into()
     }
 
-    /// Creates a body from an owned [`Read]` impl.
+    /// Creates a body from an owned reader.
     pub fn from_owned_reader(reader: impl Read + 'static) -> SendBody {
         BodyInner::OwnedReader(Box::new(reader)).into()
     }
@@ -58,6 +59,7 @@ impl SendBody {
     //     self.inner.body_mode()
     // }
 
+    /// Convert into a reader for testing or manual streaming.
     pub fn into_reader(self) -> impl Sized + io::Read {
         ReadAdapter(self)
     }
@@ -71,6 +73,7 @@ impl io::Read for ReadAdapter {
     }
 }
 
+/// Convert a value into a [`SendBody`].
 pub trait IntoSendBody: Private {
     #[doc(hidden)]
     fn into_body(self) -> SendBody;

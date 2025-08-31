@@ -24,4 +24,6 @@ pub use router::{MethodHandler, MethodRouter, Router};
 pub use send_body::{IntoSendBody, SendBody};
 pub use service::Service;
 
+pub use arg::Query;
+
 pub struct Body;

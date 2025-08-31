@@ -73,7 +73,7 @@ macro_rules! impl_handler {
                 $(
                     let $ty = match <$ty>::from_request(&state, &request) {
                         Ok(v) => v,
-                        Err(e) => return e.into(),
+                        Err(e) => return e.into_response(),
                     };
                 )*
 
@@ -98,7 +98,7 @@ macro_rules! impl_handler {
                 $(
                     let $ty = match <$ty>::from_request(&state, &request) {
                         Ok(v) => v,
-                        Err(e) => return e.into(),
+                        Err(e) => return e.into_response(),
                     };
                 )*
 

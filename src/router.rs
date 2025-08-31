@@ -21,6 +21,12 @@ impl Router {
     }
 }
 
+impl Default for Router {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[doc(hidden)]
 pub trait Callable<S>: Clone {
     fn call(&self, state: S, request: Request<Body>) -> CallResult<S>;

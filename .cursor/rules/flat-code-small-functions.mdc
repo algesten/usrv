@@ -1,0 +1,10 @@
+---
+description: Prefer flat code with small functions and early returns
+alwaysApply: true
+---
+
+- Prefer early returns and guard clauses to avoid deep nesting.
+- Split complex logic into multiple small, focused functions.
+- Avoid large nested `{ ... }` blocks; extract helpers instead of deep `if/else` or `match` pyramids.
+- Keep indentation shallow; return early rather than wrapping the remainder in `else`.
+

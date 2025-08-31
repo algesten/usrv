@@ -6,11 +6,11 @@
 //! # Example
 //!
 //! ```no_run
-//! use usrv::{Router, MethodRouter};
+//! use usrv::Router;
 //!
 //! fn hello() -> &'static str { "hello" }
 //!
-//! let _svc = Router::new().get("/hello", hello).build();
+//! let _router = Router::new().get("/hello", hello).build();
 //! ```
 use std::convert::Infallible;
 
@@ -27,17 +27,17 @@ pub trait IntoResponse {
     /// # Example
     ///
     /// ```no_run
-    /// use usrv::{Router, MethodRouter};
+    /// use usrv::Router;
     ///
     /// fn hello() -> &'static str { "hello" }
-    /// let _svc = Router::new().get("/hello", hello).build();
+    /// let _router = Router::new().get("/hello", hello).build();
     /// ```
     fn into_response(self) -> Response<SendBody>;
 }
 
 /// A 404 Not Found response.
 ///
-/// Returned by the service when no route matches.
+/// Returned when no route matches.
 pub struct NotFound;
 
 impl IntoResponse for NotFound {

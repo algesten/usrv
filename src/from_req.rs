@@ -11,7 +11,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use usrv::{http, Router, MethodRouter};
+//! use usrv::{http, Router};
 //! use usrv::Query;
 //!
 //! #[derive(serde::Deserialize)]
@@ -21,7 +21,7 @@
 //!     format!("foo={}", p.0.foo)
 //! }
 //!
-//! let svc = Router::new()
+//! let router = Router::new()
 //!     .get("/hello", handler)
 //!     .build();
 //!
@@ -31,7 +31,7 @@
 //!     .body(usrv::Body)
 //!     .unwrap();
 //!
-//! let _resp = svc.call((), req);
+//! let _resp = router.call((), req);
 //! ```
 use std::convert::Infallible;
 use crate::http;
@@ -44,8 +44,6 @@ use serde::de::DeserializeOwned;
 ///
 /// Implementors can extract method, uri, headers, query parameters, and other
 /// metadata that resides in the request head. The body is not accessible here.
-///
-/// This trait is synchronous and does not consume the request.
 ///
 /// See the crate-level example for typical usage.
 pub trait FromRequestParts<S>: Sized {
@@ -62,7 +60,7 @@ pub trait FromRequestParts<S>: Sized {
     ///
     /// ```no_run
     /// use usrv::http;
-    /// use usrv::{FromRequestParts, MethodRouter, Router};
+    /// use usrv::{FromRequestParts, Router};
     ///
     /// #[derive(Clone)]
     /// struct XId(String);
@@ -76,7 +74,7 @@ pub trait FromRequestParts<S>: Sized {
     /// }
     ///
     /// fn handler(x: XId, _r: http::Request<usrv::Body>) -> String { x.0 }
-    /// let _svc = Router::new().get("/", handler).build();
+    /// let _router = Router::new().get("/", handler).build();
     /// ```
     fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
 }
@@ -101,13 +99,13 @@ pub trait FromRequest<S>: Sized {
     /// # Example
     ///
     /// ```no_run
-    /// use usrv::{http, MethodRouter, Router};
+    /// use usrv::{http, Router};
     ///
     /// fn take(req: http::Request<usrv::Body>) -> String {
     ///     req.uri().to_string()
     /// }
     ///
-    /// let _svc = Router::new().get("/path", take).build();
+    /// let _router = Router::new().get("/path", take).build();
     /// ```
     fn from_request(state: &S, request: Request<Body>) -> Result<Self, Self::Rejection>;
 }
@@ -162,7 +160,7 @@ impl<S> FromRequestParts<S> for http::HeaderMap {
 /// Extract into a single field struct:
 ///
 /// ```no_run
-/// use usrv::{http, Router, MethodRouter, Query};
+/// use usrv::{http, Router, Query};
 ///
 /// #[derive(serde::Deserialize)]
 /// struct Params { foo: String }
@@ -171,7 +169,7 @@ impl<S> FromRequestParts<S> for http::HeaderMap {
 ///     p.0.foo
 /// }
 ///
-/// let svc = Router::new().get("/", handler).build();
+/// let router = Router::new().get("/", handler).build();
 /// ```
 pub struct Query<T>(pub T);
 
@@ -227,7 +225,7 @@ impl<S, T: FromQuery> FromRequest<S> for Query<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MethodRouter, Router};
+    use crate::Router;
     use std::collections::{BTreeMap, HashMap};
 
     fn read_body_string(mut resp: http::Response<SendBody>) -> String {
@@ -250,7 +248,7 @@ mod tests {
             "ok"
         }
 
-        let svc = Router::new().get("/req", handler).build();
+        let router = Router::new().get("/req", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -259,7 +257,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "ok");
     }
@@ -271,7 +269,7 @@ mod tests {
             m.to_string()
         }
 
-        let svc = Router::new().get("/m", handler).build();
+        let router = Router::new().get("/m", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -280,7 +278,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "GET");
     }
@@ -292,7 +290,7 @@ mod tests {
             u.to_string()
         }
 
-        let svc = Router::new().get("/u", handler).build();
+        let router = Router::new().get("/u", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -301,7 +299,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "/u");
     }
@@ -313,7 +311,7 @@ mod tests {
             if v == http::Version::HTTP_11 { "ok" } else { "bad" }
         }
 
-        let svc = Router::new().get("/v", handler).build();
+        let router = Router::new().get("/v", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -322,7 +320,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "ok");
     }
@@ -337,7 +335,7 @@ mod tests {
                 .to_string()
         }
 
-        let svc = Router::new().get("/h", handler).build();
+        let router = Router::new().get("/h", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -347,7 +345,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "ok");
     }
@@ -361,7 +359,7 @@ mod tests {
             parts.join("&")
         }
 
-        let svc = Router::new().get("/qv", handler).build();
+        let router = Router::new().get("/qv", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -370,7 +368,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "a=1&b=2");
     }
@@ -382,7 +380,7 @@ mod tests {
             q.0.get("a").unwrap().to_string() + q.0.get("b").unwrap()
         }
 
-        let svc = Router::new().get("/qh", handler).build();
+        let router = Router::new().get("/qh", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -391,7 +389,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "12");
     }
@@ -403,7 +401,7 @@ mod tests {
             q.0.iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join(",")
         }
 
-        let svc = Router::new().get("/qb", handler).build();
+        let router = Router::new().get("/qb", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -412,7 +410,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "a=1,b=2");
     }
@@ -426,7 +424,7 @@ mod tests {
             q.0.foo
         }
 
-        let svc = Router::new().get("/one", handler).build();
+        let router = Router::new().get("/one", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -435,7 +433,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "bar");
     }
@@ -447,7 +445,7 @@ mod tests {
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 
-        let svc = Router::new().get("/qp", handler).build();
+        let router = Router::new().get("/qp", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -456,7 +454,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "name= 123");
     }
@@ -468,7 +466,7 @@ mod tests {
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 
-        let svc = Router::new().get("/qplus", handler).build();
+        let router = Router::new().get("/qplus", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -477,7 +475,7 @@ mod tests {
             .body(Body)
             .unwrap();
 
-        let resp = svc.call((), req);
+        let resp = router.call((), req);
         assert_eq!(resp.status(), 200);
         assert_eq!(read_body_string(resp), "abc=a b");
     }

@@ -4,10 +4,10 @@ use crate::http::{Request, Response};
 use crate::router::{CallResult, Callable};
 use crate::{Body, IntoResponse, NotFound, SendBody};
 
-/// A callable router service.
+/// A callable service produced from a router.
 ///
-/// Build using [`MethodRouter::build`](crate::MethodRouter::build) and call with a state and
-/// request to produce a response.
+/// Build using `Router::build`, then call with a state and request to
+/// produce a response.
 pub struct Service<S, R> {
     _state: PhantomData<S>,
     router: R,

@@ -1,19 +1,4 @@
-//! Minimal, synchronous HTTP routing and extractors.
-//!
-//! # Quick start
-//!
-//! ```no_run
-//! use usrv::{http, Router, MethodRouter};
-//!
-//! fn hello() -> &'static str { "hello" }
-//!
-//! let svc = Router::new()
-//!     .get("/hello", hello)
-//!     .build();
-//!
-//! let req = http::Request::builder().uri("/hello").body(usrv::Body).unwrap();
-//! let _resp = svc.call((), req);
-//! ```
+//! Minimal, synchronous HTTP/1.1 server.
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![allow(mismatched_lifetime_syntaxes)]
@@ -35,10 +20,10 @@ mod send_body;
 mod service;
 mod util;
 
-/// Build values from request parts (head-only, synchronous).
+/// Build values from request parts (head-only).
 pub use from_req::FromRequestParts;
 
-/// Build values by consuming the full request (synchronous).
+/// Build values by consuming the full request.
 #[doc(inline)]
 pub use from_req::FromRequest;
 
@@ -58,13 +43,6 @@ pub use into_res::NotFound;
 #[doc(inline)]
 pub use router::Router;
 
-/// Routing trait with method helpers.
-#[doc(inline)]
-pub use router::MethodRouter;
-
-/// Chained route definition produced by method registrations.
-#[doc(inline)]
-pub use router::MethodHandler;
 
 /// Convert values into `SendBody`.
 #[doc(inline)]
@@ -74,7 +52,7 @@ pub use send_body::IntoSendBody;
 #[doc(inline)]
 pub use send_body::SendBody;
 
-/// A callable router service.
+/// A callable service produced from a router.
 #[doc(inline)]
 pub use service::Service;
 
@@ -90,14 +68,14 @@ pub use from_req::Query;
 /// # Example
 ///
 /// ```no_run
-/// use usrv::{http, Router, MethodRouter};
+/// use usrv::{http, Router};
 ///
 /// fn echo(req: http::Request<usrv::Body>) -> String {
 ///     format!("path={}", req.uri().path())
 /// }
 ///
-/// let svc = Router::new().get("/echo", echo).build();
+/// let router = Router::new().get("/echo", echo).build();
 /// let req = http::Request::builder().uri("/echo").body(usrv::Body).unwrap();
-/// let _resp = svc.call((), req);
+/// let _resp = router.call((), req);
 /// ```
 pub struct Body;

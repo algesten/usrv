@@ -46,6 +46,28 @@ use http::{request::Parts, Request};
 use serde::de::DeserializeOwned;
 use std::convert::Infallible;
 
+// # Planned extractors (priority)
+//
+// P0 — Core
+// - Path<T>: path parameters via serde (segment patterns like `/users/:id`).
+// - Option<T>/Result<T, E>: wrapper extractors for any `T` to make extraction optional or surfaced with error.
+// - String<const MAX: u64>: whole-body UTF-8 string with bounded read.
+// - Bytes/Vec<u8, const MAX: u64>: whole-body bytes with bounded read.
+// - Form<T, const MAX: u64>: `application/x-www-form-urlencoded` body via `serde_urlencoded`.
+//
+// P1 — High value
+// - MatchedPath: expose the registered route pattern that matched the handler.
+// - Host: effective host (authority header or URI host fallback).
+// - Body: extract `Body` as the last parameter, consuming the request.
+// - Extension<T>: extract from `http::Extensions` (T: Clone + Send + Sync + 'static).
+// - State<S>: extractor form of app state to allow non-leading placement (S: Clone).
+//
+// P2 — Nice to have (feature-gated where needed)
+// - TypedHeader<H> (feature `typed-headers`): typed header extraction using the `headers` crate.
+// - CookieJar (feature `cookies`): parse and set cookies from/to headers.
+// - OriginalUri: alias of `http::Uri` until rewrite/middleware support exists.
+//
+
 /// Builds a value from request head/parts.
 ///
 /// Implementors can extract method, uri, headers, query parameters, and other
@@ -680,14 +702,20 @@ mod json_tests {
     #[test]
     fn json_limit_10kb_reject_large() {
         #[derive(serde::Deserialize, serde::Serialize)]
-        struct Big { s: String }
+        struct Big {
+            s: String,
+        }
 
         #[cfg(feature = "json")]
-        fn handler(_m: http::Method, _j: Json<Big, { 10 * 1024 }>) -> &'static str { "ok" }
+        fn handler(_m: http::Method, _j: Json<Big, { 10 * 1024 }>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/jl", handler).build();
 
-        let big = Big { s: "a".repeat(12 * 1024) };
+        let big = Big {
+            s: "a".repeat(12 * 1024),
+        };
         let req = http::Request::builder()
             .method("POST")
             .uri("/jl")

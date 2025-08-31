@@ -1,19 +1,16 @@
-use std::marker::PhantomData;
-
 use crate::http::{Request, Response};
-use crate::router::{CallResult, Callable, Router};
+use crate::router::{BuiltRouter, CallResult, Callable, Router};
 use crate::{Body, IntoResponse, NotFound, SendBody};
 
 /// A callable service produced from a router.
 ///
 /// Build using `Router::build`, then call with a state and request to
 /// produce a response.
-pub struct Service<S, R> {
-    _state: PhantomData<S>,
-    router: R,
+pub struct Service<S> {
+    router: BuiltRouter<S>,
 }
 
-impl Service<(), ()> {
+impl Service<()> {
     /// Create a new empty router without application state.
     ///
     /// # Example
@@ -53,12 +50,9 @@ impl Service<(), ()> {
     }
 }
 
-impl<S, R: Callable<S>> Service<S, R> {
-    pub(crate) fn new(router: R) -> Self {
-        Service {
-            _state: PhantomData,
-            router,
-        }
+impl<S> Service<S> {
+    pub(crate) fn new(router: BuiltRouter<S>) -> Self {
+        Service { router }
     }
 
     /// Call the service with the given state and request.
@@ -70,10 +64,9 @@ impl<S, R: Callable<S>> Service<S, R> {
     }
 }
 
-impl<S, P: Clone> Clone for Service<S, P> {
+impl<S> Clone for Service<S> {
     fn clone(&self) -> Self {
         Self {
-            _state: PhantomData,
             router: self.router.clone(),
         }
     }

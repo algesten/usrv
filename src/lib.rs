@@ -15,7 +15,6 @@ mod body;
 mod error;
 mod handler;
 mod into_res;
-mod matcher;
 mod send_body;
 mod service;
 mod util;

@@ -1,9 +1,10 @@
 use std::convert::Infallible;
-use std::collections::{BTreeMap, HashMap};
+// std collections used only in tests; see cfg(test) module below
 
 use crate::http::{Request, Response};
 use crate::into_res::IntoResponse;
 use crate::{Body, SendBody};
+use serde::de::DeserializeOwned;
 
 pub trait Arg<S>: Sized {
     type Rejection: IntoResponse;
@@ -71,29 +72,12 @@ pub trait FromQuery: Sized {
     fn from_query(query: Option<&str>) -> Result<Self, QueryRejection>;
 }
 
-impl FromQuery for Vec<(String, String)> {
+impl<T> FromQuery for T
+where
+    T: DeserializeOwned,
+{
     fn from_query(query: Option<&str>) -> Result<Self, QueryRejection> {
-        Ok(split_query_pairs_raw(query.unwrap_or("")))
-    }
-}
-
-impl FromQuery for HashMap<String, String> {
-    fn from_query(query: Option<&str>) -> Result<Self, QueryRejection> {
-        let mut map = HashMap::new();
-        for (k, v) in split_query_pairs_raw(query.unwrap_or("")) {
-            map.insert(k, v);
-        }
-        Ok(map)
-    }
-}
-
-impl FromQuery for BTreeMap<String, String> {
-    fn from_query(query: Option<&str>) -> Result<Self, QueryRejection> {
-        let mut map = BTreeMap::new();
-        for (k, v) in split_query_pairs_raw(query.unwrap_or("")) {
-            map.insert(k, v);
-        }
-        Ok(map)
+        serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| QueryRejection)
     }
 }
 
@@ -113,55 +97,12 @@ impl<S, T: FromQuery> Arg<S> for Query<T> {
     }
 }
 
-fn split_query_pairs_raw(input: &str) -> Vec<(String, String)> {
-    if input.is_empty() {
-        return Vec::new();
-    }
-    let mut pairs = Vec::new();
-    let mut start = 0usize;
-
-    while start <= input.len() {
-        // find next '&' or end
-        let rest = &input[start..];
-        let sep_opt = rest.find('&');
-        let end = match sep_opt {
-            Some(off) => start + off,
-            None => input.len(),
-        };
-        let chunk = &input[start..end];
-        // split on first '='
-        match chunk.find('=') {
-            Some(eq) => {
-                let k = &chunk[..eq];
-                let v = &chunk[eq + 1..];
-                pairs.push((k.to_string(), v.to_string()));
-            }
-            None => {
-                // no '=', treat entire chunk as key with empty value
-                pairs.push((chunk.to_string(), String::new()));
-            }
-        }
-        if sep_opt.is_some() {
-            start = end + 1; // skip '&'
-            // allow trailing '&' to produce an empty chunk next loop iteration
-            if start == input.len() {
-                // trailing & => add empty chunk
-                pairs.push((String::new(), String::new()));
-                break;
-            }
-        } else {
-            break;
-        }
-    }
-
-    pairs
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::http as http;
     use crate::{MethodRouter, Router};
+    use std::collections::{BTreeMap, HashMap};
 
     fn read_body_string(mut resp: http::Response<SendBody>) -> String {
         let mut bytes = Vec::new();
@@ -353,7 +294,7 @@ mod tests {
     #[test]
     fn query_percent_encoded_not_decoded() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
-            // Preserve %xx encodings verbatim
+            // Decode %xx encodings into UTF-8
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 
@@ -368,13 +309,13 @@ mod tests {
 
         let resp = svc.call((), req);
         assert_eq!(resp.status(), 200);
-        assert_eq!(read_body_string(resp), "name=%20123");
+        assert_eq!(read_body_string(resp), "name= 123");
     }
 
     #[test]
     fn query_plus_not_space() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
-            // Preserve + as a literal plus sign
+            // Axum semantics: '+' is treated as space in query strings
             q.0.into_iter().map(|(k,v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
         }
 
@@ -389,6 +330,6 @@ mod tests {
 
         let resp = svc.call((), req);
         assert_eq!(resp.status(), 200);
-        assert_eq!(read_body_string(resp), "abc=a+b");
+        assert_eq!(read_body_string(resp), "abc=a b");
     }
 }

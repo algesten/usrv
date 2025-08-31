@@ -289,6 +289,29 @@ mod tests {
     }
 
     #[test]
+    fn extract_single_named_query_param() {
+        #[derive(serde::Deserialize)]
+        struct OnlyFoo { foo: String }
+
+        fn handler(q: Query<OnlyFoo>, _r: http::Request<Body>) -> String {
+            q.0.foo
+        }
+
+        let svc = Router::new().get("/one", handler).build();
+
+        let req = http::Request::builder()
+            .method("GET")
+            .uri("/one?foo=bar&ignore=1")
+            .version(http::Version::HTTP_11)
+            .body(Body)
+            .unwrap();
+
+        let resp = svc.call((), req);
+        assert_eq!(resp.status(), 200);
+        assert_eq!(read_body_string(resp), "bar");
+    }
+
+    #[test]
     fn query_percent_encoded_not_decoded() {
         fn handler(q: Query<Vec<(String, String)>>, _r: http::Request<Body>) -> String {
             // Decode %xx encodings into UTF-8

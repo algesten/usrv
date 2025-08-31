@@ -106,8 +106,8 @@ impl<S> Router<S> {
         method: Method,
         path: &'a str,
         handler: H,
-    ) -> RouterBuilder<'a, T, S, H, Self> {
-        RouterBuilder {
+    ) -> RouterChain<'a, T, S, H, Self> {
+        RouterChain {
             _htype: PhantomData,
             _state: PhantomData,
             parent: self,
@@ -118,47 +118,47 @@ impl<S> Router<S> {
     }
 
     /// Register a GET handler.
-    pub fn get<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn get<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::GET, path, handler)
     }
 
     /// Register a POST handler.
-    pub fn post<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn post<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::POST, path, handler)
     }
 
     /// Register a PUT handler.
-    pub fn put<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn put<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PUT, path, handler)
     }
 
     /// Register a DELETE handler.
-    pub fn delete<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn delete<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::DELETE, path, handler)
     }
 
     /// Register a HEAD handler.
-    pub fn head<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn head<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::HEAD, path, handler)
     }
 
     /// Register an OPTIONS handler.
-    pub fn options<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn options<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::OPTIONS, path, handler)
     }
 
     /// Register a CONNECT handler.
-    pub fn connect<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn connect<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::CONNECT, path, handler)
     }
 
     /// Register a PATCH handler.
-    pub fn patch<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn patch<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PATCH, path, handler)
     }
 
     /// Register a TRACE handler.
-    pub fn trace<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn trace<'a, T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::TRACE, path, handler)
     }
 }
@@ -167,7 +167,7 @@ impl<S> Router<S> {
 ///
 /// Returned by the method-specific registration functions and supports chaining
 /// additional registrations before calling `build`.
-pub struct RouterBuilder<'a, T, S, H, P> {
+pub struct RouterChain<'a, T, S, H, P> {
     _htype: PhantomData<T>,
     _state: PhantomData<S>,
     parent: P,
@@ -176,7 +176,7 @@ pub struct RouterBuilder<'a, T, S, H, P> {
     handler: H,
 }
 
-impl<'a, T, S, H: Handler<T, S>, P: Callable<S>> Callable<S> for RouterBuilder<'a, T, S, H, P> {
+impl<'a, T, S, H: Handler<T, S>, P: Callable<S>> Callable<S> for RouterChain<'a, T, S, H, P> {
     fn call(&self, state: S, request: Request<Body>) -> CallResult<S> {
         // First call parent since that reflects the order the handlers are declared.
         match self.parent.call(state, request) {
@@ -201,7 +201,7 @@ impl<'a, T, S, H: Handler<T, S>, P: Callable<S>> Callable<S> for RouterBuilder<'
     }
 }
 
-impl<'a, T1, S, H1: Handler<T1, S>, P1: Callable<S>> RouterBuilder<'a, T1, S, H1, P1> {
+impl<'a, T1, S, H1: Handler<T1, S>, P1: Callable<S>> RouterChain<'a, T1, S, H1, P1> {
     /// Finalize the route definitions and create a callable router.
     pub fn build(self) -> Service<S, Self> where Self: Callable<S> {
         Service::new(self)
@@ -213,8 +213,8 @@ impl<'a, T1, S, H1: Handler<T1, S>, P1: Callable<S>> RouterBuilder<'a, T1, S, H1
         method: Method,
         path: &'a str,
         handler: H,
-    ) -> RouterBuilder<'a, T, S, H, Self> {
-        RouterBuilder {
+    ) -> RouterChain<'a, T, S, H, Self> {
+        RouterChain {
             _htype: PhantomData,
             _state: PhantomData,
             parent: self,
@@ -225,47 +225,47 @@ impl<'a, T1, S, H1: Handler<T1, S>, P1: Callable<S>> RouterBuilder<'a, T1, S, H1
     }
 
     /// Register a GET handler.
-    pub fn get<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn get<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::GET, path, handler)
     }
 
     /// Register a POST handler.
-    pub fn post<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn post<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::POST, path, handler)
     }
 
     /// Register a PUT handler.
-    pub fn put<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn put<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PUT, path, handler)
     }
 
     /// Register a DELETE handler.
-    pub fn delete<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn delete<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::DELETE, path, handler)
     }
 
     /// Register a HEAD handler.
-    pub fn head<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn head<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::HEAD, path, handler)
     }
 
     /// Register an OPTIONS handler.
-    pub fn options<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn options<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::OPTIONS, path, handler)
     }
 
     /// Register a CONNECT handler.
-    pub fn connect<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn connect<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::CONNECT, path, handler)
     }
 
     /// Register a PATCH handler.
-    pub fn patch<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn patch<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::PATCH, path, handler)
     }
 
     /// Register a TRACE handler.
-    pub fn trace<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterBuilder<'a, T, S, H, Self> {
+    pub fn trace<T, H: Handler<T, S>>(self, path: &'a str, handler: H) -> RouterChain<'a, T, S, H, Self> {
         Self::handle(self, Method::TRACE, path, handler)
     }
 }
@@ -278,7 +278,7 @@ impl<S> Clone for Router<S> {
     }
 }
 
-impl<'a, T, S, H: Clone, P: Clone> Clone for RouterBuilder<'a, T, S, H, P> {
+impl<'a, T, S, H: Clone, P: Clone> Clone for RouterChain<'a, T, S, H, P> {
     fn clone(&self) -> Self {
         Self {
             _htype: PhantomData,

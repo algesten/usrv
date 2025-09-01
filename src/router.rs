@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::extract::PathParams;
 use crate::handler::Handler;
 use crate::http::{Method, Request, Response};
 use crate::{Body, SendBody, Service};
@@ -92,7 +93,8 @@ impl<S> Router<S> {
         let mut trie = matchit::Router::new();
         for p in paths.iter() {
             // If invalid pattern, skip inserting to keep behavior predictable
-            if trie.insert(p.path.as_ref(), p.id).is_err() {
+            let pat = normalize_pattern(p.path.as_ref());
+            if trie.insert(pat, p.id).is_err() {
                 continue;
             }
         }
@@ -219,16 +221,26 @@ struct PathEntry<S> {
 
 impl<S> Callable<S> for BuiltRouter<S> {
     fn call(&self, state: S, request: Request<Body>) -> CallResult<S> {
-        let path = request.uri().path();
-        match self.trie.at(path) {
+        let path = request.uri().path().to_string();
+        match self.trie.at(&path) {
             Ok(m) => {
                 let id = *m.value;
                 // unwrap: index comes from our own trie values
                 let entry = self.paths.get(id.0).expect("valid trie index");
 
                 // Find handler for method
-                let method = request.method();
-                if let Some((_, handler)) = entry.methods.iter().find(|(mm, _)| mm == method) {
+                let method = request.method().clone();
+                if let Some((_, handler)) = entry.methods.iter().find(|(mm, _)| *mm == method) {
+                    // Attach matched params to request extensions
+                    let (mut parts, body) = request.into_parts();
+                    let params: Vec<(String, String)> = m
+                        .params
+                        .iter()
+                        .map(|(k, v)| (k.to_string(), v.to_string()))
+                        .collect();
+                    parts.extensions.insert(PathParams(params));
+                    let request = Request::from_parts(parts, body);
+
                     let resp = (handler)(state, request);
                     CallResult::Handled(resp)
                 } else {
@@ -252,10 +264,7 @@ impl<S> Clone for PathEntry<S> {
 
 impl<S> Clone for BuiltRouter<S> {
     fn clone(&self) -> Self {
-        BuiltRouter {
-            paths: self.paths.clone(),
-            trie: self.trie.clone(),
-        }
+        BuiltRouter { paths: self.paths.clone(), trie: self.trie.clone() }
     }
 }
 
@@ -270,6 +279,48 @@ impl<S> Clone for Router<S> {
 /// Identifier for a unique path entry in the router.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct RouteId(usize);
+
+/// Translate public patterns like `/:name` and `/*rest` into the internal
+/// brace form `{name}` and `{*rest}`.
+///
+/// See Axum's equivalent normalization code (pinned commit):
+/// https://github.com/tokio-rs/axum/blob/5e69a0da6cf8bc39b1d1ba01ce6e507c19708f46/axum-core/src/routing/path_router.rs
+fn normalize_pattern(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() + 4);
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b':' {
+            // named param: :name -> {name}
+            let start = i + 1;
+            let mut end = start;
+            while end < bytes.len() && bytes[end] != b'/' {
+                end += 1;
+            }
+            out.push('{');
+            out.push_str(&input[start..end]);
+            out.push('}');
+            i = end;
+        } else if b == b'*' {
+            // catch-all: *rest -> {*rest}
+            let start = i + 1;
+            let mut end = start;
+            while end < bytes.len() && bytes[end] != b'/' {
+                end += 1;
+            }
+            out.push('{');
+            out.push('*');
+            out.push_str(&input[start..end]);
+            out.push('}');
+            i = end;
+        } else {
+            out.push(b as char);
+            i += 1;
+        }
+    }
+    out
+}
 
 #[cfg(test)]
 mod test {

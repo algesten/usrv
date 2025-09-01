@@ -26,9 +26,6 @@ P0 — Core
 
 P1 — High value
 - MatchedPath: expose the registered route pattern that matched the handler.
-- Host: effective host (authority header or URI host fallback).
-- Extension<T>: extract from `http::Extensions` (T: Clone + Send + Sync + 'static).
-- State<S>: extractor form of app state to allow non-leading placement (S: Clone).
 
 P2 — Nice to have (feature-gated where needed)
 - TypedHeader<H> (feature `typed-headers`): typed header extraction using the `headers` crate.

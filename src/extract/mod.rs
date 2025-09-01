@@ -14,7 +14,9 @@ use crate::Body;
 
 mod body;
 mod bytes;
+mod extension;
 mod headers;
+mod host;
 #[cfg(feature = "json")]
 mod json;
 mod method;
@@ -29,6 +31,8 @@ mod uri;
 mod version;
 
 pub use bytes::Bytes;
+pub use extension::Extension;
+pub use host::Host;
 #[cfg(feature = "json")]
 pub use json::Json;
 pub use path::Path;
@@ -42,6 +46,7 @@ pub use text::Text;
 /// fails to build its value.
 pub mod rejection {
     pub use super::bytes::BytesRejection;
+    pub use super::extension::ExtensionRejection;
     #[cfg(feature = "json")]
     pub use super::json::JsonRejection;
     pub use super::path::PathRejection;

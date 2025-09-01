@@ -101,10 +101,10 @@ impl<S> Router<S> {
     }
 
     /// Register a handler for a specific HTTP method and path.
-    pub fn handle<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn handle<T, H: Handler<T, S> + Send + Sync + 'static>(
         mut self,
         method: Method,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         let path: Arc<str> = Arc::from(path);
@@ -124,81 +124,81 @@ impl<S> Router<S> {
     }
 
     /// Register a GET handler.
-    pub fn get<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn get<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::GET, path, handler)
     }
 
     /// Register a POST handler.
-    pub fn post<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn post<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::POST, path, handler)
     }
 
     /// Register a PUT handler.
-    pub fn put<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn put<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::PUT, path, handler)
     }
 
     /// Register a DELETE handler.
-    pub fn delete<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn delete<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::DELETE, path, handler)
     }
 
     /// Register a HEAD handler.
-    pub fn head<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn head<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::HEAD, path, handler)
     }
 
     /// Register an OPTIONS handler.
-    pub fn options<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn options<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::OPTIONS, path, handler)
     }
 
     /// Register a CONNECT handler.
-    pub fn connect<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn connect<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::CONNECT, path, handler)
     }
 
     /// Register a PATCH handler.
-    pub fn patch<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn patch<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::PATCH, path, handler)
     }
 
     /// Register a TRACE handler.
-    pub fn trace<'a, T, H: Handler<T, S> + Send + Sync + 'static>(
+    pub fn trace<T, H: Handler<T, S> + Send + Sync + 'static>(
         self,
-        path: &'a str,
+        path: &str,
         handler: H,
     ) -> Self {
         self.handle(Method::TRACE, path, handler)
@@ -246,7 +246,7 @@ impl<S> Callable<S> for BuiltRouter<S> {
 impl<S> Clone for PathEntry<S> {
     fn clone(&self) -> Self {
         PathEntry {
-            id: self.id.clone(),
+            id: self.id,
             path: self.path.clone(),
             methods: self.methods.clone(),
         }

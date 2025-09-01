@@ -1,5 +1,3 @@
-#![cfg(feature = "query")]
-
 use crate::Body;
 use crate::http::{request::Parts, Request};
 use serde::de::DeserializeOwned;
@@ -29,7 +27,10 @@ where
     T: DeserializeOwned,
 {
     fn from_query(query: Option<&str>) -> Result<Self, QueryRejection> {
-        serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| QueryRejection)
+        let s = query.unwrap_or("");
+        let pairs = form_urlencoded::parse(s.as_bytes());
+        let de = serde_urlencoded::Deserializer::new(pairs);
+        serde_path_to_error::deserialize(de).map_err(|_| QueryRejection)
     }
 }
 

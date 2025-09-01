@@ -1,5 +1,3 @@
-#![cfg(feature = "json")]
-
 use crate::Body;
 use crate::http::Request;
 use serde::de::DeserializeOwned;

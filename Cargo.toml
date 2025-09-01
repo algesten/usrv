@@ -14,7 +14,7 @@ exclude = ["/cargo_deny.sh", "/deny.toml", "/test.sh"]
 [features]
 default = ["query", "json"]
 json = ["dep:serde_json"]
-query = ["dep:serde_urlencoded"]
+query = ["dep:form_urlencoded", "dep:serde_urlencoded", "dep:serde_path_to_error"]
 
 [dependencies]
 # ureq-proto = { version = "0.4.0", default-features = false, features = ["server"] }
@@ -22,6 +22,8 @@ ureq-proto = { path = "../ureq-proto", default-features = false, features = ["se
 log = "*"
 percent-encoding = "2.3.1"
 serde_urlencoded = { version = "0.7.1", optional = true, default-features = false }
+form_urlencoded = { version = "1", optional = true }
+serde_path_to_error = { version = "0.1", optional = true }
 matchit = "0.8.6"
 
 serde = { version = "1", default-features = false, features = ["std", "derive"] }

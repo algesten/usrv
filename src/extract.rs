@@ -49,7 +49,7 @@ use std::convert::Infallible;
 // # Planned extractors (priority)
 //
 // P0 — Core
-// - Path<T>: path parameters via serde (segment patterns like `/users/:id`).
+// - Path<T>: path parameters via serde (segment patterns like `/users/{id}`).
 // - Option<T>/Result<T, E>: wrapper extractors for any `T` to make extraction optional or surfaced with error.
 // - String<const MAX: u64>: whole-body UTF-8 string with bounded read.
 // - Bytes/Vec<u8, const MAX: u64>: whole-body bytes with bounded read.
@@ -226,7 +226,7 @@ mod path_tests {
             format!("{}:{}", p.user, p.book)
         }
 
-        let router = Service::router().get("/u/:user/books/:book", handler).build();
+        let router = Service::router().get("/u/{user}/books/{book}", handler).build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -246,7 +246,7 @@ mod path_tests {
             format!("{}-{}", a, b)
         }
 
-        let router = Service::router().get("/p/:a/:b", handler).build();
+        let router = Service::router().get("/p/{a}/{b}", handler).build();
 
         let req = http::Request::builder()
             .method("GET")

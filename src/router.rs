@@ -92,9 +92,7 @@ impl<S> Router<S> {
 
         let mut trie = matchit::Router::new();
         for p in paths.iter() {
-            // If invalid pattern, skip inserting to keep behavior predictable
-            let pat = normalize_pattern(p.path.as_ref());
-            if trie.insert(pat, p.id).is_err() {
+            if trie.insert(p.path.as_ref(), p.id).is_err() {
                 continue;
             }
         }
@@ -280,47 +278,6 @@ impl<S> Clone for Router<S> {
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct RouteId(usize);
 
-/// Translate public patterns like `/:name` and `/*rest` into the internal
-/// brace form `{name}` and `{*rest}`.
-///
-/// See Axum's equivalent normalization code (pinned commit):
-/// https://github.com/tokio-rs/axum/blob/5e69a0da6cf8bc39b1d1ba01ce6e507c19708f46/axum-core/src/routing/path_router.rs
-fn normalize_pattern(input: &str) -> String {
-    let mut out = String::with_capacity(input.len() + 4);
-    let bytes = input.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        let b = bytes[i];
-        if b == b':' {
-            // named param: :name -> {name}
-            let start = i + 1;
-            let mut end = start;
-            while end < bytes.len() && bytes[end] != b'/' {
-                end += 1;
-            }
-            out.push('{');
-            out.push_str(&input[start..end]);
-            out.push('}');
-            i = end;
-        } else if b == b'*' {
-            // catch-all: *rest -> {*rest}
-            let start = i + 1;
-            let mut end = start;
-            while end < bytes.len() && bytes[end] != b'/' {
-                end += 1;
-            }
-            out.push('{');
-            out.push('*');
-            out.push_str(&input[start..end]);
-            out.push('}');
-            i = end;
-        } else {
-            out.push(b as char);
-            i += 1;
-        }
-    }
-    out
-}
 
 #[cfg(test)]
 mod test {

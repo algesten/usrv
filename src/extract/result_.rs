@@ -1,5 +1,5 @@
-use crate::Body;
 use crate::http::{request::Parts, Request};
+use crate::Body;
 use std::convert::Infallible;
 
 use super::{FromRequest, FromRequestParts};
@@ -26,15 +26,20 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{Body, NotFound, Service, SendBody};
+    use crate::{Body, NotFound, SendBody, Service};
 
     #[derive(Clone)]
     struct XId(String);
 
     impl<S> super::FromRequestParts<S> for XId {
         type Rejection = NotFound;
-        fn from_request_parts(parts: &mut crate::http::request::Parts, _state: &S) -> Result<Self, Self::Rejection> {
-            let Some(v) = parts.headers.get("x-id").and_then(|h| h.to_str().ok()) else { return Err(NotFound) };
+        fn from_request_parts(
+            parts: &mut crate::http::request::Parts,
+            _state: &S,
+        ) -> Result<Self, Self::Rejection> {
+            let Some(v) = parts.headers.get("x-id").and_then(|h| h.to_str().ok()) else {
+                return Err(NotFound);
+            };
             Ok(XId(v.to_string()))
         }
     }
@@ -44,7 +49,9 @@ mod tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -52,8 +59,16 @@ mod tests {
 
     #[test]
     fn result_wrapper_err() {
-        fn handler(_m: crate::http::Method, x: Result<XId, NotFound>, _r: crate::http::Request<Body>) -> &'static str {
-            if x.is_err() { "no" } else { "yes" }
+        fn handler(
+            _m: crate::http::Method,
+            x: Result<XId, NotFound>,
+            _r: crate::http::Request<Body>,
+        ) -> &'static str {
+            if x.is_err() {
+                "no"
+            } else {
+                "yes"
+            }
         }
         let router = Service::router().get("/res", handler).build();
 
@@ -71,8 +86,15 @@ mod tests {
 
     #[test]
     fn result_wrapper_ok() {
-        fn handler(_m: crate::http::Method, x: Result<XId, NotFound>, _r: crate::http::Request<Body>) -> String {
-            match x { Ok(XId(s)) => s, Err(_) => "no".to_string() }
+        fn handler(
+            _m: crate::http::Method,
+            x: Result<XId, NotFound>,
+            _r: crate::http::Request<Body>,
+        ) -> String {
+            match x {
+                Ok(XId(s)) => s,
+                Err(_) => "no".to_string(),
+            }
         }
         let router = Service::router().get("/res2", handler).build();
 
@@ -89,5 +111,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "xyz");
     }
 }
-
-

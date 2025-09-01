@@ -1,5 +1,5 @@
-use crate::Body;
 use crate::http::Request;
+use crate::Body;
 use serde::de::DeserializeOwned;
 
 use super::FromRequest;
@@ -77,25 +77,31 @@ impl IntoResponse for JsonRejection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Body, Service, SendBody};
+    use crate::{Body, SendBody, Service};
 
     fn read_body_string(mut resp: crate::http::Response<SendBody>) -> String {
         let mut bytes = Vec::new();
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]
-    struct P { a: i32 }
+    struct P {
+        a: i32,
+    }
 
     #[test]
     fn json_ok_with_content_type() {
-        fn handler(_m: crate::http::Method, j: Json<P>) -> String { j.0.a.to_string() }
+        fn handler(_m: crate::http::Method, j: Json<P>) -> String {
+            j.0.a.to_string()
+        }
 
         let router = Service::router().post("/j", handler).build();
 
@@ -117,7 +123,9 @@ mod tests {
 
     #[test]
     fn json_ok_without_content_type() {
-        fn handler(_m: crate::http::Method, j: Json<P>) -> String { j.0.a.to_string() }
+        fn handler(_m: crate::http::Method, j: Json<P>) -> String {
+            j.0.a.to_string()
+        }
 
         let router = Service::router().post("/j2", handler).build();
 
@@ -135,7 +143,9 @@ mod tests {
 
     #[test]
     fn json_reject_wrong_content_type() {
-        fn handler(_m: crate::http::Method, _j: Json<P>) -> &'static str { "ok" }
+        fn handler(_m: crate::http::Method, _j: Json<P>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/j3", handler).build();
 
@@ -153,7 +163,9 @@ mod tests {
 
     #[test]
     fn json_reject_invalid_json() {
-        fn handler(_m: crate::http::Method, _j: Json<P>) -> &'static str { "ok" }
+        fn handler(_m: crate::http::Method, _j: Json<P>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/j4", handler).build();
 
@@ -172,13 +184,19 @@ mod tests {
     #[test]
     fn json_limit_10kb_reject_large() {
         #[derive(serde::Deserialize, serde::Serialize)]
-        struct Big { s: String }
+        struct Big {
+            s: String,
+        }
 
-        fn handler(_m: crate::http::Method, _j: Json<Big, { 10 * 1024 }>) -> &'static str { "ok" }
+        fn handler(_m: crate::http::Method, _j: Json<Big, { 10 * 1024 }>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/jl", handler).build();
 
-        let big = Big { s: "a".repeat(12 * 1024) };
+        let big = Big {
+            s: "a".repeat(12 * 1024),
+        };
         let req = crate::http::Request::builder()
             .method("POST")
             .uri("/jl")
@@ -191,5 +209,3 @@ mod tests {
         assert_eq!(resp.status(), 400);
     }
 }
-
-

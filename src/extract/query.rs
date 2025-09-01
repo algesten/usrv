@@ -1,10 +1,10 @@
-use crate::Body;
 use crate::http::{request::Parts, Request};
+use crate::Body;
 use serde::de::DeserializeOwned;
 
 use super::{FromRequest, FromRequestParts};
-use crate::{into_res::IntoResponse, SendBody};
 use crate::http;
+use crate::{into_res::IntoResponse, SendBody};
 
 /// Query string extractor.
 ///
@@ -68,7 +68,7 @@ impl IntoResponse for QueryRejection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Body, Service, SendBody};
+    use crate::{Body, SendBody, Service};
     use std::collections::{BTreeMap, HashMap};
 
     fn read_body_string(mut resp: crate::http::Response<SendBody>) -> String {
@@ -76,7 +76,9 @@ mod tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -127,7 +129,10 @@ mod tests {
     #[test]
     fn extract_query_btreemap() {
         fn handler(q: Query<BTreeMap<String, String>>, _r: crate::http::Request<Body>) -> String {
-            q.0.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join(",")
+            q.0.iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join(",")
         }
 
         let router = Service::router().get("/qb", handler).build();
@@ -147,9 +152,13 @@ mod tests {
     #[test]
     fn extract_single_named_query_param() {
         #[derive(serde::Deserialize)]
-        struct OnlyFoo { foo: String }
+        struct OnlyFoo {
+            foo: String,
+        }
 
-        fn handler(q: Query<OnlyFoo>, _r: crate::http::Request<Body>) -> String { q.0.foo }
+        fn handler(q: Query<OnlyFoo>, _r: crate::http::Request<Body>) -> String {
+            q.0.foo
+        }
 
         let router = Service::router().get("/one", handler).build();
 
@@ -168,7 +177,10 @@ mod tests {
     #[test]
     fn query_percent_encoded_not_decoded() {
         fn handler(q: Query<Vec<(String, String)>>, _r: crate::http::Request<Body>) -> String {
-            q.0.into_iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
+            q.0.into_iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join("&")
         }
 
         let router = Service::router().get("/qp", handler).build();
@@ -188,7 +200,10 @@ mod tests {
     #[test]
     fn query_plus_not_space() {
         fn handler(q: Query<Vec<(String, String)>>, _r: crate::http::Request<Body>) -> String {
-            q.0.into_iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("&")
+            q.0.into_iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join("&")
         }
 
         let router = Service::router().get("/qplus", handler).build();
@@ -205,5 +220,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "abc=a b");
     }
 }
-
-

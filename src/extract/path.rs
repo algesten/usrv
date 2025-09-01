@@ -1,8 +1,8 @@
 use crate::http::request::Parts;
 
 use super::{FromRequestParts, PathParams};
-use crate::{into_res::IntoResponse, SendBody};
 use crate::http;
+use crate::{into_res::IntoResponse, SendBody};
 
 /// Extract path parameters and deserialize into `T`.
 ///
@@ -56,16 +56,18 @@ impl IntoResponse for PathRejection {
 
 #[cfg(test)]
 mod tests {
-    use crate::http;
     use super::Path;
-    use crate::{Body, Service, SendBody};
+    use crate::http;
+    use crate::{Body, SendBody, Service};
 
     fn read_body_string(mut resp: http::Response<SendBody>) -> String {
         let mut bytes = Vec::new();
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -74,13 +76,18 @@ mod tests {
     #[test]
     fn path_named_struct() {
         #[derive(serde::Deserialize)]
-        struct P { user: String, book: String }
+        struct P {
+            user: String,
+            book: String,
+        }
 
         fn handler(Path(p): Path<P>, _r: http::Request<Body>) -> String {
             format!("{}:{}", p.user, p.book)
         }
 
-        let router = Service::router().get("/u/{user}/books/{book}", handler).build();
+        let router = Service::router()
+            .get("/u/{user}/books/{book}", handler)
+            .build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -114,5 +121,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "10-20");
     }
 }
-
-

@@ -22,7 +22,9 @@ mod tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -31,7 +33,10 @@ mod tests {
     #[test]
     fn extract_headers() {
         fn handler(h: http::HeaderMap, _r: http::Request<Body>) -> String {
-            h.get("X-Unit").and_then(|v| v.to_str().ok()).unwrap_or("").to_string()
+            h.get("X-Unit")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("")
+                .to_string()
         }
         let router = Service::router().get("/h", handler).build();
 
@@ -48,5 +53,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "ok");
     }
 }
-
-

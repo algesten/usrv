@@ -22,7 +22,9 @@ mod tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -31,7 +33,11 @@ mod tests {
     #[test]
     fn extract_version() {
         fn handler(v: http::Version, _r: http::Request<Body>) -> &'static str {
-            if v == http::Version::HTTP_11 { "ok" } else { "bad" }
+            if v == http::Version::HTTP_11 {
+                "ok"
+            } else {
+                "bad"
+            }
         }
 
         let router = Service::router().get("/v", handler).build();
@@ -48,5 +54,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "ok");
     }
 }
-
-

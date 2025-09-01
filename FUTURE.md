@@ -22,12 +22,11 @@ Planned borrowed extractors
 Extractor roadmap (priority)
 
 P0 — Core
-- Form<T, const MAX: u64>: `application/x-www-form-urlencoded` body via `serde_urlencoded`.
+- Multipart<T, const MAX: u64>: `application/x-www-form-urlencoded` body via `serde_urlencoded`.
 
 P1 — High value
 - MatchedPath: expose the registered route pattern that matched the handler.
 - Host: effective host (authority header or URI host fallback).
-- Body: extract `Body` as the last parameter, consuming the request.
 - Extension<T>: extract from `http::Extensions` (T: Clone + Send + Sync + 'static).
 - State<S>: extractor form of app state to allow non-leading placement (S: Clone).
 

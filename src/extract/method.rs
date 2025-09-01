@@ -50,5 +50,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "GET");
     }
 }
-
-

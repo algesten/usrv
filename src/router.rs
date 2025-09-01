@@ -124,29 +124,17 @@ impl<S> Router<S> {
     }
 
     /// Register a GET handler.
-    pub fn get<T, H: Handler<T, S> + Send + Sync + 'static>(
-        self,
-        path: &str,
-        handler: H,
-    ) -> Self {
+    pub fn get<T, H: Handler<T, S> + Send + Sync + 'static>(self, path: &str, handler: H) -> Self {
         self.handle(Method::GET, path, handler)
     }
 
     /// Register a POST handler.
-    pub fn post<T, H: Handler<T, S> + Send + Sync + 'static>(
-        self,
-        path: &str,
-        handler: H,
-    ) -> Self {
+    pub fn post<T, H: Handler<T, S> + Send + Sync + 'static>(self, path: &str, handler: H) -> Self {
         self.handle(Method::POST, path, handler)
     }
 
     /// Register a PUT handler.
-    pub fn put<T, H: Handler<T, S> + Send + Sync + 'static>(
-        self,
-        path: &str,
-        handler: H,
-    ) -> Self {
+    pub fn put<T, H: Handler<T, S> + Send + Sync + 'static>(self, path: &str, handler: H) -> Self {
         self.handle(Method::PUT, path, handler)
     }
 
@@ -160,11 +148,7 @@ impl<S> Router<S> {
     }
 
     /// Register a HEAD handler.
-    pub fn head<T, H: Handler<T, S> + Send + Sync + 'static>(
-        self,
-        path: &str,
-        handler: H,
-    ) -> Self {
+    pub fn head<T, H: Handler<T, S> + Send + Sync + 'static>(self, path: &str, handler: H) -> Self {
         self.handle(Method::HEAD, path, handler)
     }
 

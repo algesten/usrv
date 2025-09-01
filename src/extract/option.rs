@@ -1,5 +1,5 @@
-use crate::Body;
 use crate::http::{request::Parts, Request};
+use crate::Body;
 use std::convert::Infallible;
 
 use super::{FromRequest, FromRequestParts};
@@ -26,15 +26,20 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{Body, NotFound, Service, SendBody};
+    use crate::{Body, NotFound, SendBody, Service};
 
     #[derive(Clone)]
     struct XId(String);
 
     impl<S> super::FromRequestParts<S> for XId {
         type Rejection = NotFound;
-        fn from_request_parts(parts: &mut crate::http::request::Parts, _state: &S) -> Result<Self, Self::Rejection> {
-            let Some(v) = parts.headers.get("x-id").and_then(|h| h.to_str().ok()) else { return Err(NotFound) };
+        fn from_request_parts(
+            parts: &mut crate::http::request::Parts,
+            _state: &S,
+        ) -> Result<Self, Self::Rejection> {
+            let Some(v) = parts.headers.get("x-id").and_then(|h| h.to_str().ok()) else {
+                return Err(NotFound);
+            };
             Ok(XId(v.to_string()))
         }
     }
@@ -44,7 +49,9 @@ mod tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -52,7 +59,11 @@ mod tests {
 
     #[test]
     fn option_wrapper_absent() {
-        fn handler(_m: crate::http::Method, x: Option<XId>, _r: crate::http::Request<Body>) -> String {
+        fn handler(
+            _m: crate::http::Method,
+            x: Option<XId>,
+            _r: crate::http::Request<Body>,
+        ) -> String {
             x.map(|x| x.0).unwrap_or_else(|| "none".to_string())
         }
         let router = Service::router().get("/opt", handler).build();
@@ -71,7 +82,13 @@ mod tests {
 
     #[test]
     fn option_wrapper_present() {
-        fn handler(_m: crate::http::Method, x: Option<XId>, _r: crate::http::Request<Body>) -> String { x.unwrap().0 }
+        fn handler(
+            _m: crate::http::Method,
+            x: Option<XId>,
+            _r: crate::http::Request<Body>,
+        ) -> String {
+            x.unwrap().0
+        }
         let router = Service::router().get("/opt2", handler).build();
 
         let req = crate::http::Request::builder()
@@ -87,5 +104,3 @@ mod tests {
         assert_eq!(read_body_string(resp), "abc");
     }
 }
-
-

@@ -1,9 +1,9 @@
-use crate::{Body};
 use crate::http::Request;
+use crate::Body;
 
 use super::FromRequest;
-use crate::{into_res::IntoResponse, SendBody};
 use crate::http;
+use crate::{into_res::IntoResponse, SendBody};
 
 /// UTF-8 text body extractor with a size limit.
 ///
@@ -45,14 +45,16 @@ impl IntoResponse for TextRejection {
 #[cfg(test)]
 mod tests {
     use crate::http;
-    use crate::{Body, Service, SendBody};
+    use crate::{Body, SendBody, Service};
 
     fn read_body_string(mut resp: http::Response<SendBody>) -> String {
         let mut bytes = Vec::new();
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -60,7 +62,9 @@ mod tests {
 
     #[test]
     fn text_ok() {
-        fn handler(_m: http::Method, t: super::Text) -> String { t.0 }
+        fn handler(_m: http::Method, t: super::Text) -> String {
+            t.0
+        }
 
         let router = Service::router().post("/t", handler).build();
 
@@ -78,7 +82,9 @@ mod tests {
 
     #[test]
     fn text_invalid_utf8_rejected() {
-        fn handler(_m: http::Method, _t: super::Text) -> &'static str { "ok" }
+        fn handler(_m: http::Method, _t: super::Text) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/ti", handler).build();
 
@@ -95,7 +101,9 @@ mod tests {
 
     #[test]
     fn text_limit_rejected() {
-        fn handler(_m: http::Method, _t: super::Text<4>) -> &'static str { "ok" }
+        fn handler(_m: http::Method, _t: super::Text<4>) -> &'static str {
+            "ok"
+        }
 
         let router = Service::router().post("/tl", handler).build();
 
@@ -110,5 +118,3 @@ mod tests {
         assert_eq!(resp.status(), 400);
     }
 }
-
-

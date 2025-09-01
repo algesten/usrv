@@ -8,32 +8,33 @@
 //! Extractors are used as handler function parameters. Leading parameters are
 //! built from request parts, and the last parameter may consume the request.
 
+use crate::http::{request::Parts, Request};
 use crate::into_res::IntoResponse;
 use crate::Body;
-use crate::http::{request::Parts, Request};
 
-mod method;
-mod uri;
-mod version;
-mod headers;
-mod request;
-mod path;
-mod option;
-mod result_;
-mod text;
+mod body;
 mod bytes;
-#[cfg(feature = "query")]
-mod query;
+mod headers;
 #[cfg(feature = "json")]
 mod json;
+mod method;
+mod option;
+mod path;
+#[cfg(feature = "query")]
+mod query;
+mod request;
+mod result_;
+mod text;
+mod uri;
+mod version;
 
 pub use bytes::Bytes;
 #[cfg(feature = "json")]
 pub use json::Json;
 pub use path::Path;
-pub use text::Text;
 #[cfg(feature = "query")]
 pub use query::{FromQuery, Query};
+pub use text::Text;
 
 /// Rejection types returned by extractors.
 ///
@@ -44,9 +45,9 @@ pub mod rejection {
     #[cfg(feature = "json")]
     pub use super::json::JsonRejection;
     pub use super::path::PathRejection;
-    pub use super::text::TextRejection;
     #[cfg(feature = "query")]
     pub use super::query::QueryRejection;
+    pub use super::text::TextRejection;
 }
 
 /// Builds a value from request head/parts.
@@ -92,8 +93,6 @@ pub trait FromRequest<S>: Sized {
 #[derive(Clone)]
 pub(crate) struct PathParams(pub Vec<(String, String)>);
 
-
-
 pub(crate) fn prepare_extracters<X>(m: &matchit::Match<X>, request: &mut Request<Body>) {
     let params: Vec<(String, String)> = m
         .params
@@ -102,5 +101,3 @@ pub(crate) fn prepare_extracters<X>(m: &matchit::Match<X>, request: &mut Request
         .collect();
     request.extensions_mut().insert(PathParams(params));
 }
-
-

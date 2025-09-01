@@ -211,7 +211,9 @@ mod path_tests {
         let mut buf = [0u8; 1024];
         loop {
             let n = resp.body_mut().read(&mut buf).unwrap();
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             bytes.extend_from_slice(&buf[..n]);
         }
         String::from_utf8_lossy(&bytes).into_owned()
@@ -220,13 +222,18 @@ mod path_tests {
     #[test]
     fn path_named_struct() {
         #[derive(serde::Deserialize)]
-        struct P { user: String, book: String }
+        struct P {
+            user: String,
+            book: String,
+        }
 
         fn handler(Path(p): Path<P>, _r: http::Request<Body>) -> String {
             format!("{}:{}", p.user, p.book)
         }
 
-        let router = Service::router().get("/u/{user}/books/{book}", handler).build();
+        let router = Service::router()
+            .get("/u/{user}/books/{book}", handler)
+            .build();
 
         let req = http::Request::builder()
             .method("GET")
@@ -428,6 +435,15 @@ where
         let value: T = serde_json::from_reader(reader).map_err(|_| JsonRejection)?;
         Ok(Json(value))
     }
+}
+
+pub(crate) fn prepare_extracters<X>(m: &matchit::Match<X>, request: &mut Request<Body>) {
+    let params: Vec<(String, String)> = m
+        .params
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    request.extensions_mut().insert(PathParams(params));
 }
 
 #[cfg(all(test, feature = "query"))]

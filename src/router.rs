@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::extract::PathParams;
+use crate::extract;
 use crate::handler::Handler;
 use crate::http::{Method, Request, Response};
 use crate::{Body, SendBody, Service};
@@ -218,7 +218,7 @@ struct PathEntry<S> {
 }
 
 impl<S> Callable<S> for BuiltRouter<S> {
-    fn call(&self, state: S, request: Request<Body>) -> CallResult<S> {
+    fn call(&self, state: S, mut request: Request<Body>) -> CallResult<S> {
         let path = request.uri().path().to_string();
         match self.trie.at(&path) {
             Ok(m) => {
@@ -230,14 +230,7 @@ impl<S> Callable<S> for BuiltRouter<S> {
                 let method = request.method().clone();
                 if let Some((_, handler)) = entry.methods.iter().find(|(mm, _)| *mm == method) {
                     // Attach matched params to request extensions
-                    let (mut parts, body) = request.into_parts();
-                    let params: Vec<(String, String)> = m
-                        .params
-                        .iter()
-                        .map(|(k, v)| (k.to_string(), v.to_string()))
-                        .collect();
-                    parts.extensions.insert(PathParams(params));
-                    let request = Request::from_parts(parts, body);
+                    extract::prepare_extracters(&m, &mut request);
 
                     let resp = (handler)(state, request);
                     CallResult::Handled(resp)
@@ -262,7 +255,10 @@ impl<S> Clone for PathEntry<S> {
 
 impl<S> Clone for BuiltRouter<S> {
     fn clone(&self) -> Self {
-        BuiltRouter { paths: self.paths.clone(), trie: self.trie.clone() }
+        BuiltRouter {
+            paths: self.paths.clone(),
+            trie: self.trie.clone(),
+        }
     }
 }
 
@@ -277,7 +273,6 @@ impl<S> Clone for Router<S> {
 /// Identifier for a unique path entry in the router.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct RouteId(usize);
-
 
 #[cfg(test)]
 mod test {

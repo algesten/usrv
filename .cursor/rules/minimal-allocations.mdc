@@ -1,0 +1,9 @@
+---
+description: Minimize allocations and prefer borrowing
+alwaysApply: true
+---
+
+- Prefer borrowing (`&str`, `&[u8]`) over owning where practical.
+- Reuse buffers; avoid unnecessary `clone`, `to_string`, or `format` on hot paths.
+- Favor iterator/streaming style processing over building intermediate collections.
+

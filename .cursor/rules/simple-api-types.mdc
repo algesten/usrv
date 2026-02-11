@@ -1,0 +1,9 @@
+---
+description: Simple, concrete types in public API
+alwaysApply: true
+---
+
+- Use familiar, concrete types: `&str`, `String`, `&[u8]`, `Vec<u8]`, slices, `Option<T>`, `Result<T, E>`, and basic collections.
+- Avoid exposing complex generics, unnecessary lifetimes, trait objects, or macros in the public API.
+- Error handling: expose a single clear error type that implements `std::error::Error`.
+

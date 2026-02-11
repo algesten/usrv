@@ -1,0 +1,10 @@
+---
+description: Use unwrap/expect for internal invariants with justification
+alwaysApply: true
+---
+
+- Prefer `unwrap()` (or `expect()`) over `match`/`if let` defensive handling for internal truths.
+- Place a one-line comment immediately above: `// unwrap: <why the invariant holds>`.
+- Establish invariants by construction earlier; do not re‑validate via pattern matching.
+- Use `expect()` with a concise message when failure needs extra context.
+

@@ -1,0 +1,10 @@
+---
+description: Keep dependency count low
+alwaysApply: true
+---
+
+- Prefer the standard library over external crates.
+- Add a dependency only with a clear, measured benefit and after considering std alternatives.
+- Keep dependencies small, focused, and well maintained.
+- Use optional features and disable default features where sensible to reduce transitive bloat.
+

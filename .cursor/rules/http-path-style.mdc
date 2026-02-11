@@ -1,0 +1,13 @@
+---
+description: Prefer referencing HTTP types via the crate-root
+alwaysApply: true
+---
+
+Use `http::Type` paths (not `crate::http::Type`)
+
+- Prefer referencing HTTP types via the crate-root re-export `http::...` in public-facing code, examples, and tests.
+- Rationale: mirrors user code, improves readability, and matches Axum-style docs.
+- Examples:
+  - Good: `http::Method`, `http::Request`, `http::HeaderMap`
+  - Bad: `crate::http::Method`, `crate::http::Request`, `crate::http::HeaderMap`
+

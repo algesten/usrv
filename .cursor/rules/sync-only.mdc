@@ -1,0 +1,9 @@
+---
+description: Sync only, never async
+alwaysApply: true
+---
+
+- No `async/await` anywhere.
+- No async runtimes (e.g. Tokio) or crates that require them.
+- Public APIs must not expose async types (no `Future`, `Stream`, etc.).
+
